@@ -30,6 +30,6 @@ router.post('/user/thermostat/update', middleware.auth, userController.updateThe
 // To do
 
 // Get alarm trigger when time is up
-router.post('/user/alarm/trigger', middleware.auth, userController.userdetails)
+router.post('/user/alarm/trigger', middleware.auth, userController.alarmTrigger)
 
 module.exports = router;

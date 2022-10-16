@@ -1,7 +1,8 @@
 const mysql = require('mysql')
 const jwt = require('jsonwebtoken')
-const bcrypt = require('bcryptjs');
-const { request } = require('express');
+const bcrypt = require('bcryptjs')
+const { request } = require('express')
+const https = require('https')
 // const dotenv = require('dotenv')
 
 // dotenv.config()
@@ -85,8 +86,8 @@ exports.login = async (req, res) => {
                         }
                     })
 
-                    const {location, light_on, curtain_on, alarm_time, alarm_on, preferred_temp, name} = results[0]
-                    let send_data = {username, location, light_on, curtain_on, alarm_time, alarm_on, preferred_temp, name, token: access_token}
+                    const {location, light_on, curtain_on, alarm_time, alarm_on, preferred_temp, name, heat, cold, thermostat_on} = results[0]
+                    let send_data = {username, location, light_on, curtain_on, alarm_time, alarm_on, preferred_temp, name, heat, cold, thermostat_on, token: access_token}
                     
                     // send jwt token
                     return res.status(200).send({status: 200, body: send_data, msg:"User loggedIn!"})
@@ -211,7 +212,7 @@ exports.updateThermostat = (req, res) => {
         console.log("In updateThermostat")
         // console.log(req.userdetails)
         const user_details = req.userdetails
-        let {thermostat_temp, preferred_temp, location, alarm_time, alarm_on, name, username, light_on, curtain_on} = user_details
+        let {thermostat_on, thermostat_temp, preferred_temp, location, alarm_time, alarm_on, name, username, light_on, curtain_on, heat ,cold} = user_details
 
         if(req.body.temperature || req.body.temperature == 0){
             thermostat_temp = req.body.temperature
@@ -230,9 +231,78 @@ exports.updateThermostat = (req, res) => {
                 console.log("DB updated successfully!")
             }
         })
-        return res.status(200).send({status: 200, body:{thermostat_temp, preferred_temp, location, alarm_time, alarm_on, name, username, light_on, curtain_on}, msg: "Updated the thermostat successfully!"})
+        return res.status(200).send({status: 200, body:{thermostat_on, thermostat_temp, preferred_temp, heat, cold, location, alarm_time, alarm_on, name, username, light_on, curtain_on}, msg: "Updated the thermostat successfully!"})
     }catch(e){
         console.log("Error in updateThermostat: ", e)
         return res.status(400).send({status: 400, msg:"error in updateThermostat function"})
+    }
+}
+
+async function get_weather(location, climate){
+    console.log("In")
+    const api_key = process.env.WEATHER_API_ACCESS_KEY
+    const api = "https://api.openweathermap.org/data/2.5/weather?q=" + location + "&APPID=" + api_key
+    https.get(api, (response) => {
+        if(response.statusCode != 200){
+            console.log("resposne not 200 for weather data in alarmTrigger func!")
+            return {status: 404, msg: "City not found! reenter the city!"}
+        }
+        response.on('data', (data)=>{
+            const data_json = JSON.parse(data)
+            const weather_data = data_json.weather[0]
+            const temp_data = data_json.main
+            
+            // convert temp from kelvin to celcius Celsius = (Kelvin – 273.15)
+            const temperature = parseInt(temp_data.temp - 273.15)
+            const feels_like = parseInt(temp_data.feels_like - 273.15)
+            const weather_details = {climate: weather_data.main, descriptioin: weather_data.description, place: data_json.name, country: data_json.sys.country, temperature, feels_like, unit: "celsius"}
+            let current_climate = weather_details.climate
+            climate = current_climate
+        })
+    })
+}
+
+// When alram time is up
+exports.alarmTrigger = async (req, res) => {
+    try{
+        console.log("In alarmTrigger")
+        // console.log(req.userdetails)
+        const user_details = req.userdetails
+        let {thermostat_temp, preferred_temp, location, alarm_time, alarm_on, name, username, light_on, curtain_on} = user_details
+        let climate=""
+
+        // if climate is in request(for tests)
+        if(req.body.sunny){
+            console.log("in")
+            climate = "sun"
+        }else{
+            // check if it is sunny or cloudy
+            await get_weather(location, climate)
+            console.log(climate)
+        }
+
+        if(climate.includes("cloud")){
+            console.log("clouds")
+        }
+        else if(climate.includes("sun")){
+            console.log("sun")
+        }
+
+        // Send trigger to IOT devices
+        // Send trigger for light_on
+
+        // // Update temp in DB
+        // db.query('update users set thermostat_temp=? where id=?', [thermostat_temp, user_details.id], (error, results)=>{
+        //     if(error){
+        //         console.log("error in updateThermostat function at update: ", error)
+        //         return res.status(400).send({status: 400, msg:"error in updateThermostat function at update"})
+        //     }else{
+        //         console.log("DB updated successfully!")
+        //     }
+        // })
+        return res.status(200).send({status: 200, body:{thermostat_temp, preferred_temp, location, alarm_time, alarm_on, name, username, light_on, curtain_on}, msg: "Updated the thermostat successfully!"})
+    }catch(e){
+        console.log("Error in alarmTrigger: ", e)
+        return res.status(400).send({status: 400, msg:"error in alarmTrigger function"})
     }
 }
