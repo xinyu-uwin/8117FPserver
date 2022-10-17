@@ -28,8 +28,8 @@ exports.weatherdata = (req, res) => {
                 // convert temp from kelvin to celcius Celsius = (Kelvin – 273.15)
                 const temperature = parseInt(temp_data.temp - 273.15)
                 const feels_like = parseInt(temp_data.feels_like - 273.15)
-
-                return res.status(200).send({status: 200, body:{climate: weather_data.main, descriptioin: weather_data.description, place: data_json.name, country: data_json.sys.country, temperature, feels_like, unit: "celsius"}})
+                const data_to_send = {climate: weather_data.main, description: weather_data.description, place: data_json.name, country: data_json.sys.country, temperature, feels_like, unit: "celsius"}
+                return res.status(200).send({status: 200, body:data_to_send})
             })
         })
     } catch (e) {

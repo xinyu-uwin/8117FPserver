@@ -26,7 +26,7 @@ exports.auth = async (req, res, next) => {
             }
             // console.log(decoded)
             // get user details for further use
-            db.query('select id,username, location, light_on, curtain_on, alarm_time, alarm_on, preferred_temp, name from users where token=?', [token], async (error, results)=>{
+            db.query('select id,username, location, light_on, curtain_on, alarm_time, alarm_on, preferred_temp, name, heat, cold, thermostat_on, thermostat_temp from users where token=?', [token], async (error, results)=>{
                 if(error){
                     console.log("error in auth function at select:", error)
                     return res.status(400).send({msg:"error in auth function at select"})
@@ -45,4 +45,3 @@ exports.auth = async (req, res, next) => {
         res.status(401).send({ msg: 'Please authenticate.' })
     }
 }
-

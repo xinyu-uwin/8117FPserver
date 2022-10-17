@@ -238,30 +238,6 @@ exports.updateThermostat = (req, res) => {
     }
 }
 
-async function get_weather(location, climate){
-    console.log("In")
-    const api_key = process.env.WEATHER_API_ACCESS_KEY
-    const api = "https://api.openweathermap.org/data/2.5/weather?q=" + location + "&APPID=" + api_key
-    https.get(api, (response) => {
-        if(response.statusCode != 200){
-            console.log("resposne not 200 for weather data in alarmTrigger func!")
-            return {status: 404, msg: "City not found! reenter the city!"}
-        }
-        response.on('data', (data)=>{
-            const data_json = JSON.parse(data)
-            const weather_data = data_json.weather[0]
-            const temp_data = data_json.main
-            
-            // convert temp from kelvin to celcius Celsius = (Kelvin – 273.15)
-            const temperature = parseInt(temp_data.temp - 273.15)
-            const feels_like = parseInt(temp_data.feels_like - 273.15)
-            const weather_details = {climate: weather_data.main, descriptioin: weather_data.description, place: data_json.name, country: data_json.sys.country, temperature, feels_like, unit: "celsius"}
-            let current_climate = weather_details.climate
-            climate = current_climate
-        })
-    })
-}
-
 // When alram time is up
 exports.alarmTrigger = async (req, res) => {
     try{
@@ -271,36 +247,72 @@ exports.alarmTrigger = async (req, res) => {
         let {thermostat_temp, preferred_temp, location, alarm_time, alarm_on, name, username, light_on, curtain_on} = user_details
         let climate=""
 
+        // for tests
+        if(req.body.location){
+            location = req.body.location
+        }
+
         // if climate is in request(for tests)
-        if(req.body.sunny){
-            console.log("in")
-            climate = "sun"
-        }else{
-            // check if it is sunny or cloudy
-            await get_weather(location, climate)
-            console.log(climate)
-        }
+        // check if it is sunny or cloudy
+        const api_key = process.env.WEATHER_API_ACCESS_KEY
+        const api = "https://api.openweathermap.org/data/2.5/weather?q=" + location + "&APPID=" + api_key
+        https.get(api, (response) => {
+            if(response.statusCode != 200){
+                console.log("resposne not 200 for weather data in alarmTrigger func!")
+                return {status: 404, msg: "City not found! reenter the city!"}
+            }
+            response.on('data', (data)=>{
+                const data_json = JSON.parse(data)
+                const weather_data = data_json.weather[0]
+                const temp_data = data_json.main
+                
+                // convert temp from kelvin to celcius Celsius = (Kelvin – 273.15)
+                const temperature = parseInt(temp_data.temp - 273.15)
+                const feels_like = parseInt(temp_data.feels_like - 273.15)
+                const weather_details = {climate: weather_data.main, description: weather_data.description, place: data_json.name, country: data_json.sys.country, temperature, feels_like, unit: "celsius"}
+                let current_climate = weather_details.climate
+                climate = current_climate
 
-        if(climate.includes("cloud")){
-            console.log("clouds")
-        }
-        else if(climate.includes("sun")){
-            console.log("sun")
-        }
+                console.log("climate:", climate)
 
-        // Send trigger to IOT devices
-        // Send trigger for light_on
+                if(climate.toLocaleLowerCase().includes("cloud") || climate.toLocaleLowerCase().includes("mist") || climate.toLocaleLowerCase().includes("fog")){
+                    console.log("Close the curtains")
+                    curtain_on = 0
+                    console.log("On lights")
+                    light_on = 1
+                    console.log("On alarm")
+                    console.log("Increase temperature")
+                    thermostat_temp = 28
 
-        // // Update temp in DB
-        // db.query('update users set thermostat_temp=? where id=?', [thermostat_temp, user_details.id], (error, results)=>{
-        //     if(error){
-        //         console.log("error in updateThermostat function at update: ", error)
-        //         return res.status(400).send({status: 400, msg:"error in updateThermostat function at update"})
-        //     }else{
-        //         console.log("DB updated successfully!")
-        //     }
-        // })
-        return res.status(200).send({status: 200, body:{thermostat_temp, preferred_temp, location, alarm_time, alarm_on, name, username, light_on, curtain_on}, msg: "Updated the thermostat successfully!"})
+                    // // Update details in DB
+                    // db.query('update users set thermostat_temp=? where id=?', [thermostat_temp, user_details.id], (error, results)=>{
+                    //     if(error){
+                    //         console.log("error in updateThermostat function at update: ", error)
+                    //         return res.status(400).send({status: 400, msg:"error in updateThermostat function at update"})
+                    //     }else{
+                    //         console.log("DB updated successfully!")
+                    //     }
+                    // })
+                }else{
+                    console.log("Open curtain")
+                    curtain_on = 1
+
+                    console.log("On alarm")
+                    
+                    
+                    // // Update details in DB
+                    // db.query('update users set thermostat_temp=? where id=?', [thermostat_temp, user_details.id], (error, results)=>{
+                    //     if(error){
+                    //         console.log("error in updateThermostat function at update: ", error)
+                    //         return res.status(400).send({status: 400, msg:"error in updateThermostat function at update"})
+                    //     }else{
+                    //         console.log("DB updated successfully!")
+                    //     }
+                    // })
+                }
+                return res.status(200).send({status: 200, body:{thermostat_temp, preferred_temp, location, alarm_time, alarm_on, name, username, light_on, curtain_on}, msg: weather_details.description})
+            })
+        })
     }catch(e){
         console.log("Error in alarmTrigger: ", e)
         return res.status(400).send({status: 400, msg:"error in alarmTrigger function"})
