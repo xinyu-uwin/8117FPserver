@@ -1,17 +1,7 @@
 const mysql = require('mysql')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
-// const dotenv = require('dotenv')
-
-// dotenv.config()
-
-// connect to db
-const db = mysql.createConnection({
-    host            : process.env.DB_HOST,
-    user            : process.env.DB_USER,
-    password        : process.env.DB_PASS,
-    database        : process.env.DB_NAME
-});
+const db = require('../database/connection.js')
 
 // User login
 exports.auth = async (req, res, next) => {
@@ -26,15 +16,15 @@ exports.auth = async (req, res, next) => {
             }
             // console.log(decoded)
             // get user details for further use
-            db.query('select id,username, location, light_on, curtain_on, alarm_time, alarm_on, preferred_temp, name, heat, cold, thermostat_on, thermostat_temp from users where token=?', [token], async (error, results)=>{
+            db.query(`select username, location, light_on, curtain_on, alarm_time, alarm_on, preferred_temp, name, heat, cold, thermostat_on, thermostat_temp from users where token='${token}';`, async (error, results)=>{
                 if(error){
                     console.log("error in auth function at select:", error)
                     return res.status(400).send({msg:"error in auth function at select"})
                 }
-                else if(results.length == 0){
+                else if(results.rows.length == 0){
                     return res.status(401).send({status:401, msg: "Token expired! Try logging In!!"})
                 }else{
-                    req.userdetails = results[0]
+                    req.userdetails = results.rows[0]
                     next()
                 }
             })
