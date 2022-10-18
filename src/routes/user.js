@@ -2,6 +2,9 @@ const express = require('express')
 const userController = require('../controllers/user')
 const weatherController = require('../controllers/weather')
 const middleware = require('../middleware/auth')
+const db = require('../database/connection.js')
+
+db.connect()
 
 const router = express.Router()
 
@@ -26,9 +29,6 @@ router.post('/user/settings', middleware.auth, userController.settings)
 router.post('/user/device/control', middleware.auth, userController.deviceControl)
 // Thermostat update
 router.post('/user/thermostat/update', middleware.auth, userController.updateThermostat)
-
-// To do
-
 // Get alarm-on trigger to on the alarm features
 router.post('/user/alarm-on/trigger', middleware.auth, userController.alarmTrigger)
 
