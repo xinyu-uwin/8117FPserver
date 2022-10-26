@@ -4,6 +4,9 @@ const bcrypt = require('bcryptjs')
 const { request } = require('express')
 const https = require('https')
 const db = require('../database/connection.js')
+const email = require('../emails/send_otp')
+const iotController = require('../connect_to_aws/publish_to_iot.js')
+
 
 // Register new user
 exports.register = (req, res) => {
@@ -11,7 +14,7 @@ exports.register = (req, res) => {
         console.log("In register")
 
         // console.log("req.body: ", req.body)
-        const {username, password, location, alarm_time, preferred_temp, name} = req.body
+        const {username, password, location, alarm_time_weekday, alarm_time_weekend, preferred_temp, name} = req.body
 
         // check if user already exists or not
         db.query(`select username from users where username='${username}';`, async (error, results)=>{
@@ -26,7 +29,7 @@ exports.register = (req, res) => {
             let hashedPassword = await bcrypt.hash(password, 8)
 
             // insert user details into db
-            let q = `insert into users(username,password,location,alarm_time,preferred_temp,name) values('${username}','${hashedPassword}','${location}','${alarm_time}','${preferred_temp}','${name}');`
+            let q = `insert into users(username,password,location,alarm_time_weekday,alarm_time_weekend,preferred_temp,name) values('${username}','${hashedPassword}','${location}','${alarm_time_weekday}','${alarm_time_weekend}','${preferred_temp}','${name}');`
             db.query(q, (error, results)=>{
                 if(error){
                     console.log("error in register function at insert: ", error)
@@ -76,8 +79,8 @@ exports.login = async (req, res) => {
                         }
                     })
 
-                    const {location, light_on, curtain_on, alarm_time, alarm_on, preferred_temp, name, heat, cold, thermostat_on} = results.rows[0]
-                    let send_data = {username, location, light_on, curtain_on, alarm_time, alarm_on, preferred_temp, name, heat, cold, thermostat_on, token: access_token}
+                    const {location, light_on, curtain_on, alarm_time_weekday, alarm_time_weekend, alarm_on, preferred_temp, name, heat, cold, thermostat_on} = results.rows[0]
+                    let send_data = {username, location, light_on, curtain_on, alarm_time_weekday, alarm_time_weekend, alarm_on, preferred_temp, name, heat, cold, thermostat_on, token: access_token}
                     
                     // send jwt token
                     return res.status(200).send({status: 200, body: send_data, msg:"User loggedIn!"})
@@ -127,20 +130,120 @@ exports.logout = async (req, res) => {
     }  
 }
 
+// Forgot password send otp
+exports.forgot_password_send_otp = async (req, res) => {
+    try{
+        console.log("In forgot_password_send_otp!")
+
+        // console.log("req.body: ", req.body)
+        const {username} = req.body
+
+        // get user password to verify
+        db.query(`select otp from users where username='${username}';`, async (error, results)=>{
+            if(error){
+                console.log("error in forgot_password_send_otp function at select:", error)
+                return res.status(400).send({status: 400, msg:"error in forgot_password_send_otp function at select"})
+            }
+            else if(results.rows.length == 0){
+                return res.status(401).send({status: 404, msg: "User not found, Please register!!"})
+            }else{
+                // Generate otp
+                let otp = Math.floor(1000 + Math.random() * 9000)
+
+                // Send otp to mail
+                await email.send_otp(username, otp)
+
+                // Insert otp details into db
+                db.query(`update users set otp='${otp}' where username='${username}';`, (error, results)=>{
+                    if(error){
+                        console.log("error in forgot_password_send_otp function at insert: ", error)
+                        return res.status(400).send({status: 400, msg:"error in forgot_password_send_otp function at insert"})
+                    }else{
+                        console.log("OTP stored successfully!")
+                    }
+                    return res.status(200).send({status: 200, body: {otp}, msg:"OTP sent successfully!"})
+                })
+            }
+        })
+    }catch(e){
+        console.log("Error in orgot_password_send_otp: ", e)
+        return res.status(400).send({status: 400, msg:"error in forgot_password_send_otp function"})
+    }
+}
+
+// Forgot password verify otp
+exports.forgot_password_verify_otp = async (req, res) => {
+    try{
+        console.log("In forgot_password_verify_otp!")
+
+        // console.log("req.body: ", req.body)
+        const {username} = req.body
+        const otp_received = req.body.otp
+
+        // get user password to verify
+        db.query(`select otp from users where username='${username}';`, async (error, results)=>{
+            if(error){
+                console.log("error in forgot_password_verify_otp function at select:", error)
+                return res.status(400).send({status: 400, msg:"error in forgot_password_verify_otp function at select"})
+            }
+            else if(results.rows.length == 0){
+                return res.status(401).send({status: 404, msg: "User not found, Please register!!"})
+            }else{
+                if(results.rows[0].otp == otp_received){
+                    return res.status(200).send({status: 200, msg:"OTP verified! Can reset password!"})
+                }else{
+                    return res.status(401).send({status: 401, msg:"OTP invalid!"})
+                }
+            }
+        })
+    }catch(e){
+        console.log("Error in orgot_password_verify_otp: ", e)
+        return res.status(400).send({status: 400, msg:"error in forgot_password_verify_otp function"})
+    }
+}
+
+// reset password
+exports.reset_password = async (req, res) => {
+    try{
+        console.log("In reset_password!")
+
+        // console.log("req.body: ", req.body)
+        const {username, password} = req.body
+
+        let hashedPassword = await bcrypt.hash(password, 8)
+
+        // update password in db
+        db.query(`update users set password='${hashedPassword}' where username='${username}';`, async (error, results)=>{
+            if(error){
+                console.log("error in reset_password function at select:", error)
+                return res.status(400).send({status: 400, msg:"error in reset_password function at select"})
+            }
+            else{
+                return res.status(200).send({status: 200, msg:"Password Changed Successfull!"})
+            }
+        })
+    }catch(e){
+        console.log("Error in reset_password: ", e)
+        return res.status(400).send({status: 400, msg:"error in reset_password function"})
+    }
+}
+
 // settings
 exports.settings = (req, res) => {
     try{
         console.log("In Settings")
         // console.log(req.userdetails, req.body)
         const user_details = req.userdetails
-        let {preferred_temp, location, alarm_time, alarm_on, name} = user_details
+        let {preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name} = user_details
 
         if(req.body.preferred_temp || req.body.preferred_temp==0){
             preferred_temp = req.body.preferred_temp
         }if(req.body.location){
             location = req.body.location
-        }if(req.body.alarm_time){
-            alarm_time = req.body.alarm_time
+        }if(req.body.alarm_time_weekday){
+            alarm_time_weekday = req.body.alarm_time_weekday
+        }if(req.body.alarm_time_weekend){
+            alarm_time_weekend = req.body.alarm_time_weekend
         }if(req.body.name){
             name = req.body.name
         }if(req.body.alarm_on || req.body.alarm_on==0){
@@ -148,7 +251,7 @@ exports.settings = (req, res) => {
         }
         
         // Update temp in DB
-        db.query(`update users set preferred_temp='${preferred_temp}', location='${location}', alarm_time='${alarm_time}', alarm_on='${alarm_on}', name='${name}' where username='${user_details.username}';`, (error, results)=>{
+        db.query(`update users set preferred_temp='${preferred_temp}', location='${location}', alarm_time_weekday='${alarm_time_weekday}', alarm_time_weekend='${alarm_time_weekend}', alarm_on='${alarm_on}', name='${name}' where username='${user_details.username}';`, (error, results)=>{
             if(error){
                 console.log("error in settings function at update: ", error)
                 return res.status(400).send({status: 400, msg:"error in settings function at update"})
@@ -156,7 +259,7 @@ exports.settings = (req, res) => {
                 console.log("DB updated successfully!")
             }
         })
-        return res.status(200).send({status: 200, body:{preferred_temp, location, alarm_time, alarm_on, name, username:user_details.username, light_on: user_details.light_on, curtain_on: user_details.curtain_on}, msg: "Updated the settings successfully!"})
+        return res.status(200).send({status: 200, body:{preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username:user_details.username, light_on: user_details.light_on, curtain_on: user_details.curtain_on}, msg: "Updated the settings successfully!"})
     }catch(e){
         console.log("Error in updateThermostat: ", e)
         return res.status(400).send({status: 400, msg:"error in settings function"})
@@ -170,6 +273,8 @@ exports.deviceControl = (req, res) => {
         // console.log(req.userdetails)
         const user_details = req.userdetails
         let {light_on, curtain_on} = user_details
+        let topic = ""
+        let data = {}
 
         if(req.body.light_on || req.body.light_on==0){
             light_on = req.body.light_on
@@ -179,6 +284,18 @@ exports.deviceControl = (req, res) => {
         // console.log(light_on, curtain_on)
         
         // Send trigger to IOT device
+        if(light_on == req.body.light_on){
+            // console.log("on light:", light_on, req.body.light_on)
+            topic = "trigger/light_on"
+            data = {"light-on": light_on}
+            iotController.publish_to_iot(topic, data)     
+        }
+        if(curtain_on == req.body.curtain_on){
+            // console.log("curtain on:", curtain_on, req.body.curtain_on)
+            topic = "trigger/curtain_open"
+            data = {"curtain-open": curtain_on}
+            iotController.publish_to_iot(topic, data)
+        }
 
         // Update in DB
         db.query(`update users set light_on='${light_on}', curtain_on='${curtain_on}' where username='${user_details.username}'`, (error, results)=>{
@@ -202,7 +319,7 @@ exports.updateThermostat = (req, res) => {
         console.log("In updateThermostat")
         // console.log(req.userdetails)
         const user_details = req.userdetails
-        let {thermostat_on, thermostat_temp, preferred_temp, location, alarm_time, alarm_on, name, username, light_on, curtain_on, heat ,cold} = user_details
+        let {thermostat_on, thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on, heat ,cold} = user_details
 
         if(req.body.temperature || req.body.temperature == 0){
             thermostat_temp = req.body.temperature
@@ -221,7 +338,7 @@ exports.updateThermostat = (req, res) => {
                 console.log("DB updated successfully!")
             }
         })
-        return res.status(200).send({status: 200, body:{thermostat_on, thermostat_temp, preferred_temp, heat, cold, location, alarm_time, alarm_on, name, username, light_on, curtain_on}, msg: "Updated the thermostat successfully!"})
+        return res.status(200).send({status: 200, body:{thermostat_on, thermostat_temp, preferred_temp, heat, cold, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on}, msg: "Updated the thermostat successfully!"})
     }catch(e){
         console.log("Error in updateThermostat: ", e)
         return res.status(400).send({status: 400, msg:"error in updateThermostat function"})
@@ -234,7 +351,7 @@ exports.alarmTrigger = async (req, res) => {
         console.log("In alarmTrigger")
         // console.log(req.userdetails)
         const user_details = req.userdetails
-        let {thermostat_temp, preferred_temp, location, alarm_time, alarm_on, name, username, light_on, curtain_on} = user_details
+        let {thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on} = user_details
         let climate=""
 
         // for tests
@@ -284,7 +401,7 @@ exports.alarmTrigger = async (req, res) => {
                     
                     // update DB
                 }
-                return res.status(200).send({status: 200, body:{thermostat_temp, preferred_temp, location, alarm_time, alarm_on, name, username, light_on, curtain_on}, msg: weather_details.description})
+                return res.status(200).send({status: 200, body:{thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on}, msg: weather_details.description})
             })
         })
     }catch(e){
@@ -292,4 +409,3 @@ exports.alarmTrigger = async (req, res) => {
         return res.status(400).send({status: 400, msg:"error in alarmTrigger function"})
     }
 }
-
