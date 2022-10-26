@@ -22,15 +22,22 @@ router.get('/user/details', middleware.auth, userController.userdetails)
 // change user settings
 router.post('/user/settings', middleware.auth, userController.settings)
 
+// device control to turn on and off the devices
+router.post('/user/device/control', middleware.auth, userController.deviceControl)
 
 // To do IOT interaction
 
-// device control to turn on and off the devices
-router.post('/user/device/control', middleware.auth, userController.deviceControl)
 // Thermostat update
 router.post('/user/thermostat/update', middleware.auth, userController.updateThermostat)
 // Get alarm-on trigger to on the alarm features
 router.post('/user/alarm-on/trigger', middleware.auth, userController.alarmTrigger)
+
+router.post('/user/request/otp', userController.forgot_password_send_otp)
+router.post('/user/verify/otp', userController.forgot_password_verify_otp)
+
+// To do
+router.post('/user/reset/password', userController.reset_password)
+// router.post('/user/verify/otp', userController.forgot_password_verify_otp)
 
 
 module.exports = router;
