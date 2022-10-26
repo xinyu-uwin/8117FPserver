@@ -235,30 +235,38 @@ exports.settings = (req, res) => {
         // console.log(req.userdetails, req.body)
         const user_details = req.userdetails
         let {preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name} = user_details
+        let update_db = 0
 
-        if(req.body.preferred_temp || req.body.preferred_temp==0){
+        if((req.body.preferred_temp || req.body.preferred_temp==0) && (req.body.preferred_temp != preferred_temp)){
+            update_db = 1
             preferred_temp = req.body.preferred_temp
-        }if(req.body.location){
+        }if(req.body.location && req.body.location != location){
+            update_db = 1
             location = req.body.location
-        }if(req.body.alarm_time_weekday){
+        }if(req.body.alarm_time_weekday && req.body.alarm_time_weekday != alarm_time_weekday){
+            update_db = 1
             alarm_time_weekday = req.body.alarm_time_weekday
-        }if(req.body.alarm_time_weekend){
+        }if(req.body.alarm_time_weekend && req.body.alarm_time_weekend != alarm_time_weekend){
+            update_db = 1
             alarm_time_weekend = req.body.alarm_time_weekend
-        }if(req.body.name){
+        }if(req.body.name && req.body.name != name){
+            update_db = 1
             name = req.body.name
-        }if(req.body.alarm_on || req.body.alarm_on==0){
+        }if((req.body.alarm_on || req.body.alarm_on==0) && (req.body.alarm_on != alarm_on)){
+            update_db = 1
             alarm_on = req.body.alarm_on
         }
-        
-        // Update temp in DB
-        db.query(`update users set preferred_temp='${preferred_temp}', location='${location}', alarm_time_weekday='${alarm_time_weekday}', alarm_time_weekend='${alarm_time_weekend}', alarm_on='${alarm_on}', name='${name}' where username='${user_details.username}';`, (error, results)=>{
-            if(error){
-                console.log("error in settings function at update: ", error)
-                return res.status(400).send({status: 400, msg:"error in settings function at update"})
-            }else{
-                console.log("DB updated successfully!")
-            }
-        })
+
+        if(update_db == 1){
+            db.query(`update users set preferred_temp='${preferred_temp}', location='${location}', alarm_time_weekday='${alarm_time_weekday}', alarm_time_weekend='${alarm_time_weekend}', alarm_on='${alarm_on}', name='${name}' where username='${user_details.username}';`, (error, results)=>{
+                if(error){
+                    console.log("error in settings function at update: ", error)
+                    return res.status(400).send({status: 400, msg:"error in settings function at update"})
+                }else{
+                    console.log("DB updated successfully!")
+                }
+            })
+        }
         return res.status(200).send({status: 200, body:{preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username:user_details.username, light_on: user_details.light_on, curtain_on: user_details.curtain_on}, msg: "Updated the settings successfully!"})
     }catch(e){
         console.log("Error in updateThermostat: ", e)
@@ -275,37 +283,31 @@ exports.deviceControl = (req, res) => {
         let {light_on, curtain_on} = user_details
         let topic = ""
         let data = {}
+        let update_db = 0
 
-        if(req.body.light_on || req.body.light_on==0){
+        if((req.body.light_on || req.body.light_on==0) && (req.body.light_on != light_on)){
+            update_db = 1
             light_on = req.body.light_on
-        }if(req.body.curtain_on || req.body.curtain_on==0){
-            curtain_on = req.body.curtain_on
-        }
-        // console.log(light_on, curtain_on)
-        
-        // Send trigger to IOT device
-        if(light_on == req.body.light_on){
-            // console.log("on light:", light_on, req.body.light_on)
             topic = "trigger/light_on"
             data = {"light-on": light_on}
-            iotController.publish_to_iot(topic, data)     
-        }
-        if(curtain_on == req.body.curtain_on){
-            // console.log("curtain on:", curtain_on, req.body.curtain_on)
+            iotController.publish_to_iot(topic, data)
+        }if((req.body.curtain_on || req.body.curtain_on==0) && (req.body.curtain_on != curtain_on)){
+            update_db = 1
+            curtain_on = req.body.curtain_on
             topic = "trigger/curtain_open"
             data = {"curtain-open": curtain_on}
             iotController.publish_to_iot(topic, data)
         }
-
-        // Update in DB
-        db.query(`update users set light_on='${light_on}', curtain_on='${curtain_on}' where username='${user_details.username}'`, (error, results)=>{
-            if(error){
-                console.log("error in deviceControl function at update: ", error)
-                return res.status(400).send({status: 400, msg:"error in deviceControl function at update"})
-            }else{
-                console.log("DB updated successfully!")
-            }
-        })
+        if(update_db == 1){
+            db.query(`update users set light_on='${light_on}', curtain_on='${curtain_on}' where username='${user_details.username}'`, (error, results)=>{
+                if(error){
+                    console.log("error in deviceControl function at update: ", error)
+                    return res.status(400).send({status: 400, msg:"error in deviceControl function at update"})
+                }else{
+                    console.log("DB updated successfully!")
+                }
+            })
+        }
         return res.status(200).send({status: 200, body:{light_on, curtain_on}, msg: "Updated the devices successfully!"})
     }catch(e){
         console.log("Error in deviceControl: ", e)
@@ -320,24 +322,26 @@ exports.updateThermostat = (req, res) => {
         // console.log(req.userdetails)
         const user_details = req.userdetails
         let {thermostat_on, thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on, heat ,cold} = user_details
+        let update_db = 0
 
-        if(req.body.temperature || req.body.temperature == 0){
+        if((req.body.temperature || req.body.temperature == 0) && (req.body.temperature != thermostat_temp)){
+            update_db = 1
             thermostat_temp = req.body.temperature
-        }else{
-            return res.status(400).send({status: 400, msg:"Temperature value NOT provided!"})            
+            topic = "trigger/thermostat_update"
+            data = {"temperature": thermostat_temp}
+            iotController.publish_to_iot(topic, data)
         }
-        
-        // Send trigger to IOT device
 
-        // Update temp in DB
-        db.query(`update users set thermostat_temp='${thermostat_temp}' where username='${user_details.username}';`, (error, results)=>{
-            if(error){
-                console.log("error in updateThermostat function at update: ", error)
-                return res.status(400).send({status: 400, msg:"error in updateThermostat function at update"})
-            }else{
-                console.log("DB updated successfully!")
-            }
-        })
+        if(update_db == 1){
+            db.query(`update users set thermostat_temp='${thermostat_temp}' where username='${user_details.username}';`, (error, results)=>{
+                if(error){
+                    console.log("error in updateThermostat function at update: ", error)
+                    return res.status(400).send({status: 400, msg:"error in updateThermostat function at update"})
+                }else{
+                    console.log("DB updated successfully!")
+                }
+            })
+        }
         return res.status(200).send({status: 200, body:{thermostat_on, thermostat_temp, preferred_temp, heat, cold, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on}, msg: "Updated the thermostat successfully!"})
     }catch(e){
         console.log("Error in updateThermostat: ", e)
@@ -409,3 +413,4 @@ exports.alarmTrigger = async (req, res) => {
         return res.status(400).send({status: 400, msg:"error in alarmTrigger function"})
     }
 }
+
