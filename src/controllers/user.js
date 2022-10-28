@@ -357,6 +357,8 @@ exports.alarmTrigger = async (req, res) => {
         const user_details = req.userdetails
         let {thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on} = user_details
         let climate=""
+        let topic = ""
+        let data = {}
 
         // for tests
         if(req.body.location){
@@ -367,7 +369,7 @@ exports.alarmTrigger = async (req, res) => {
         // check if it is sunny or cloudy
         const api_key = process.env.WEATHER_API_ACCESS_KEY
         const api = "https://api.openweathermap.org/data/2.5/weather?q=" + location + "&APPID=" + api_key
-        console.log(api)
+        // console.log(api)
         https.get(api, (response) => {
             if(response.statusCode != 200){
                 console.log("response statusCode " + response.statusCode + " is received, for weather data in alarmTrigger func!")
@@ -388,23 +390,43 @@ exports.alarmTrigger = async (req, res) => {
                 // console.log("climate:", climate)
 
                 if(climate.toLocaleLowerCase().includes("cloud") || climate.toLocaleLowerCase().includes("mist") || climate.toLocaleLowerCase().includes("fog")){
-                    console.log("Close the curtains")
+                    console.log(">> On Cloudy Day!")
+                    console.log("Light-on , Curtian-Close, Increase Temperature!")
                     curtain_on = 0
-                    console.log("On lights")
                     light_on = 1
-                    console.log("On alarm")
-                    console.log("Increase temperature")
-                    thermostat_temp = 28
-
-                    // Update details in DB
+                    thermostat_temp = 26
                 }else{
-                    console.log("Open curtain")
+                    console.log(">> On Sunny Day!")
+                    console.log("Light-off , Curtian-Open, Temperature to preferred temperature!")
                     curtain_on = 1
-
-                    console.log("On alarm")
-                    
-                    // update DB
+                    light_on = 0
+                    thermostat_temp = preferred_temp
                 }
+
+                // Trigger to IOT devices
+                topic = "trigger/curtain_open"
+                data = {"curtain-open": curtain_on}
+                iotController.publish_to_iot(topic, data)
+                
+                topic = "trigger/light_on"
+                data = {"light-on": light_on}
+                iotController.publish_to_iot(topic, data)
+                
+                topic = "trigger/thermostat_update"
+                data = {"temperature": thermostat_temp}
+                iotController.publish_to_iot(topic, data)
+                
+                // console.log("On alarm")
+
+                // Update details in DB
+                db.query(`update users set light_on='${light_on}', curtain_on='${curtain_on}', thermostat_temp='${thermostat_temp}' where username='${user_details.username}'`, (error, results)=>{
+                    if(error){
+                        console.log("error in alarmTrigger function at update: ", error)
+                        return res.status(400).send({status: 400, msg:"error in alarmTrigger function at update"})
+                    }else{
+                        console.log("DB updated successfully!")
+                    }
+                })
                 return res.status(200).send({status: 200, body:{thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on}, msg: weather_details.description})
             })
         })
