@@ -63,29 +63,34 @@ exports.login = async (req, res) => {
             else if(results.rows.length == 0){
                 return res.status(401).send({status: 404, msg: "User not found, Please register!!"})
             }else{
-                // compare hashedPassword
-                let hashedPassword = results.rows[0].password
-                let password_correct = await bcrypt.compare(password, hashedPassword)
-                if(password_correct){
-                    // Generate jwt token
-                    const access_token = jwt.sign(username, process.env.ACCESS_TOKEN_SECRET)
-                    // Insert jwt token details into db
-                    db.query(`update users set token='${access_token}' where username='${username}';`, (error, results)=>{
-                        if(error){
-                            console.log("error in login function at insert: ", error)
-                            return res.status(400).send({status: 400, msg:"error in users function at insert"})
-                        }else{
-                            console.log("Token insertion successfull!")
-                        }
-                    })
+                if(password){
+                    // compare hashedPassword
+                    let hashedPassword = results.rows[0].password
+                    let password_correct = await bcrypt.compare(password, hashedPassword)
+                    if(password_correct){
+                        // Generate jwt token
+                        const access_token = jwt.sign(username, process.env.ACCESS_TOKEN_SECRET)
+                        // Insert jwt token details into db
+                        db.query(`update users set token='${access_token}' where username='${username}';`, (error, results)=>{
+                            if(error){
+                                console.log("error in login function at insert: ", error)
+                                return res.status(400).send({status: 400, msg:"error in users function at insert"})
+                            }else{
+                                console.log("Token insertion successfull!")
+                            }
+                        })
 
-                    const {location, light_on, curtain_on, alarm_time_weekday, alarm_time_weekend, alarm_on, preferred_temp, name, heat, cold, thermostat_on} = results.rows[0]
-                    let send_data = {username, location, light_on, curtain_on, alarm_time_weekday, alarm_time_weekend, alarm_on, preferred_temp, name, heat, cold, thermostat_on, token: access_token}
-                    
-                    // send jwt token
-                    return res.status(200).send({status: 200, body: send_data, msg:"User loggedIn!"})
+                        const {location, light_on, curtain_on, alarm_time_weekday, alarm_time_weekend, alarm_on, preferred_temp, name, heat, cold, thermostat_on} = results.rows[0]
+                        let send_data = {username, location, light_on, curtain_on, alarm_time_weekday, alarm_time_weekend, alarm_on, preferred_temp, name, heat, cold, thermostat_on, token: access_token}
+                        
+                        // send jwt token
+                        return res.status(200).send({status: 200, body: send_data, msg:"User loggedIn!"})
+                    }else{
+                        return res.status(401).send({status: 401, msg: "Invalid Password! Try again!"})
+                    }
                 }else{
-                    return res.status(401).send({status: 401, msg: "Invalid Password! Try again!"})
+                    let send_data = {username}
+                    return res.status(200).send({status: 200, body: send_data, msg:"Enter Password!"})
                 }
             }
         })
