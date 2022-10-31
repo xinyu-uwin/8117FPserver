@@ -13,10 +13,12 @@
     "aws-iot-device-sdk": "^2.2.12",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.1",
+    "cron": "^2.1.0",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "jsonwebtoken": "^8.5.1",
     "mysql": "^2.18.1",
+    "node-cron": "^3.0.2",
     "nodemailer": "^6.8.0",
     "path": "^0.12.7",
     "pg": "^8.8.0"
