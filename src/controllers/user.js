@@ -332,20 +332,24 @@ exports.updateThermostat = (req, res) => {
         if((req.body.temperature || req.body.temperature == 0) && (req.body.temperature != thermostat_temp)){
             update_db = 1
             thermostat_temp = req.body.temperature
-            data = {"temperature": thermostat_temp}
         }
         if((req.body.heat || req.body.heat==0) && (req.body.heat != heat)){
             update_db = 1
             heat = req.body.heat
-            data = {"heat": heat}
+            if(heat == 1){
+                cold = 0
+            }
         }
         if((req.body.cold || req.body.cold==0) && (req.body.cold != cold)){
             update_db = 1
             cold = req.body.cold
-            data = {"cold": cold}
+            if(cold == 1){
+                heat = 0
+            }
         }
 
         if(update_db == 1){
+            data = {"temperature":thermostat_temp, heat, cold}
             iotController.publish_to_iot(topic, data)
             db.query(`update users set heat='${heat}', cold='${cold}', thermostat_temp='${thermostat_temp}' where username='${user_details.username}';`, (error, results)=>{
                 if(error){
@@ -427,7 +431,7 @@ exports.alarmTrigger = async (req, res) => {
                 iotController.publish_to_iot(topic, data)
                 
                 topic = "trigger/thermostat_update"
-                data = {"temperature": thermostat_temp}
+                data = {"temperature": thermostat_temp, "heat": heat, "cold": cold}
                 iotController.publish_to_iot(topic, data)
                 
                 // console.log("On alarm")
