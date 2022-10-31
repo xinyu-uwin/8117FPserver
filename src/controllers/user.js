@@ -1,4 +1,3 @@
-const mysql = require('mysql')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
 const { request } = require('express')
@@ -329,16 +328,26 @@ exports.updateThermostat = (req, res) => {
         let {thermostat_on, thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on, heat ,cold} = user_details
         let update_db = 0
 
+        topic = "trigger/thermostat_update"
         if((req.body.temperature || req.body.temperature == 0) && (req.body.temperature != thermostat_temp)){
             update_db = 1
             thermostat_temp = req.body.temperature
-            topic = "trigger/thermostat_update"
             data = {"temperature": thermostat_temp}
-            iotController.publish_to_iot(topic, data)
+        }
+        if((req.body.heat || req.body.heat==0) && (req.body.heat != heat)){
+            update_db = 1
+            heat = req.body.heat
+            data = {"heat": heat}
+        }
+        if((req.body.cold || req.body.cold==0) && (req.body.cold != cold)){
+            update_db = 1
+            cold = req.body.cold
+            data = {"cold": cold}
         }
 
         if(update_db == 1){
-            db.query(`update users set thermostat_temp='${thermostat_temp}' where username='${user_details.username}';`, (error, results)=>{
+            iotController.publish_to_iot(topic, data)
+            db.query(`update users set heat='${heat}', cold='${cold}', thermostat_temp='${thermostat_temp}' where username='${user_details.username}';`, (error, results)=>{
                 if(error){
                     console.log("error in updateThermostat function at update: ", error)
                     return res.status(400).send({status: 400, msg:"error in updateThermostat function at update"})
@@ -440,4 +449,3 @@ exports.alarmTrigger = async (req, res) => {
         return res.status(400).send({status: 400, msg:"error in alarmTrigger function"})
     }
 }
-
