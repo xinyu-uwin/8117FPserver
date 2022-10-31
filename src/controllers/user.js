@@ -373,7 +373,7 @@ exports.alarmTrigger = async (req, res) => {
         console.log("In alarmTrigger")
         // console.log(req.userdetails)
         const user_details = req.userdetails
-        let {thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on} = user_details
+        let {thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on, heat, cold} = user_details
         let climate=""
         let topic = ""
         let data = {}
