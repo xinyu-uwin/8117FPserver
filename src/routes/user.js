@@ -3,8 +3,17 @@ const userController = require('../controllers/user')
 const weatherController = require('../controllers/weather')
 const middleware = require('../middleware/auth')
 const db = require('../database/connection.js')
+const cron = require('node-cron')
+const thermostatControl = require('../controllers/thermostat.js')
 
 db.connect()
+
+// Cron Job
+// cron.schedule("*/30 * * * * *", function() {
+//     let check_date = new Date()
+//     console.log("--> Auto-Thermostat Check at ", check_date)
+//     thermostatControl.automateThermostat()
+// })
 
 const router = express.Router()
 
@@ -38,6 +47,7 @@ router.post('/user/verify/otp', userController.forgot_password_verify_otp)
 // To do
 router.post('/user/reset/password', userController.reset_password)
 // router.post('/user/verify/otp', userController.forgot_password_verify_otp)
+
 
 
 module.exports = router;
