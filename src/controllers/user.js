@@ -411,12 +411,12 @@ exports.alarmTrigger = async (req, res) => {
                     console.log(">> On Cloudy Day!")
                     console.log("Light-on , Curtian-Close, Increase Temperature!")
                     curtain_on = 0
-                    light_on = 1
+                    light_on = 100
                     thermostat_temp = 26
                 }else{
                     console.log(">> On Sunny Day!")
                     console.log("Light-off , Curtian-Open, Temperature to preferred temperature!")
-                    curtain_on = 1
+                    curtain_on = 100
                     light_on = 0
                     thermostat_temp = preferred_temp
                 }
