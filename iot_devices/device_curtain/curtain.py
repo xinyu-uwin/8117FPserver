@@ -7,10 +7,11 @@ def customCallback(client,userdata,message):
 	# print("Data received from Server: ", data)
 	time = datetime.datetime.now()
 	print(time, end=" ")
-	if data["curtain-open"] == 1:
-		print("--- CURTAIN OPENED")
-	elif data["curtain-open"] == 0:
-		print("--- CURTAIN CLOSE")
+	curtain_open_percent = data["curtain-open"]
+	if curtain_open_percent == 0:
+		print("--- CURTAIN CLOSED")
+	else:
+		print("--- CURTAIN OPEN Percentage = ", curtain_open_percent)
 
 myMQTTClient = AWSIoTMQTTClient("curtain")
 myMQTTClient.configureEndpoint("a32yk77mbrevmu-ats.iot.us-east-2.amazonaws.com", 8883)
