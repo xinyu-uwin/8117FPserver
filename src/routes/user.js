@@ -9,14 +9,14 @@ const automateControl = require('../controllers/automation.js')
 db.connect()
 
 // Cron Job
-// cron.schedule("*/10 * * * * *", function() {
-//     let check_date = new Date()
-//     console.log("--> Auto-Thermostat Check at ", check_date)
-//     automateControl.automateThermostat()
+cron.schedule("*/20 * * * * *", function() {
+    let check_date = new Date()
+    console.log("--> Auto-Thermostat Check at ", check_date)
+    automateControl.automateThermostat()
 
-//     // Check time and send alarmTrigger
-//     // automateControl.automateAlarmTrigger()
-// })
+    // Check time and send alarmTrigger
+    // automateControl.automateAlarmTrigger()
+})
 
 const router = express.Router()
 
