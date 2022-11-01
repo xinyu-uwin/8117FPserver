@@ -7,10 +7,11 @@ def customCallback(client,userdata,message):
 	# print("Data received from Server: ", data)
 	time = datetime.datetime.now()
 	print(time, end=" ")
-	if data["light-on"] == 1:
-		print("--- LIGHT TURNED ON")
-	elif data["light-on"] == 0:
+	light_on_percent = data["light-on"]
+	if light_on_percent == 0:
 		print("--- LIGHT TURNED OFF")
+	else:
+		print("--- LIGHT TURNED ON Percentage = ", light_on_percent)
 
 myMQTTClient = AWSIoTMQTTClient("light_bulb")
 myMQTTClient.configureEndpoint("a32yk77mbrevmu-ats.iot.us-east-2.amazonaws.com", 8883)
