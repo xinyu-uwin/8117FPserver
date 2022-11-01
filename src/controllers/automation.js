@@ -78,3 +78,11 @@ exports.automateThermostat = ()=>{
         }
     })
 }
+
+exports.automateAlarmTrigger = () => {
+    // Get time based on location and check the alarm time
+    
+
+
+    // Send trigger
+}
