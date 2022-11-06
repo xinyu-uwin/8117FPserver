@@ -234,15 +234,16 @@ exports.settings = (req, res) => {
         console.log("In Settings")
         // console.log(req.userdetails, req.body)
         const user_details = req.userdetails
-        let {preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name} = user_details
-        let update_db = 0
+        let {preferred_temp, location, timezone_location, alarm_time_weekday, alarm_time_weekend, alarm_on, name} = user_details
+        let update_db = 0, update_timezone=0
 
         if((req.body.preferred_temp || req.body.preferred_temp==0) && (req.body.preferred_temp != preferred_temp)){
             update_db = 1
             preferred_temp = req.body.preferred_temp
         }if(req.body.location && req.body.location != location){
             update_db = 1
-            location = req.body.location
+            update_timezone = 1
+            location = req.body.location    
         }if(req.body.alarm_time_weekday && req.body.alarm_time_weekday != alarm_time_weekday){
             update_db = 1
             alarm_time_weekday = req.body.alarm_time_weekday
@@ -258,18 +259,34 @@ exports.settings = (req, res) => {
         }
 
         if(update_db == 1){
-            db.query(`update users set preferred_temp='${preferred_temp}', location='${location}', alarm_time_weekday='${alarm_time_weekday}', alarm_time_weekend='${alarm_time_weekend}', alarm_on='${alarm_on}', name='${name}' where username='${user_details.username}';`, (error, results)=>{
-                if(error){
-                    console.log("error in settings function at update: ", error)
-                    return res.status(400).send({status: 400, msg:"error in settings function at update"})
-                }else{
-                    console.log("DB updated successfully!")
-                }
-            })
+            if(update_timezone == 1){
+                let api = process.env.ABSTRACT_TIMEZONE_API_3
+                axios.get('https://timezone.abstractapi.com/v1/current_time/?api_key='+api+'&location='+location)
+                .then(response => {
+                    timezone_location = response.data.timezone_location
+                    db.query(`update users set preferred_temp='${preferred_temp}', location='${location}', timezone_location='${timezone_location}', alarm_time_weekday='${alarm_time_weekday}', alarm_time_weekend='${alarm_time_weekend}', alarm_on='${alarm_on}', name='${name}' where username='${user_details.username}';`, (error, results)=>{
+                        if(error){
+                            console.log("error in settings function at update: ", error)
+                            return res.status(400).send({status: 400, msg:"error in settings function at update"})
+                        }else{
+                            console.log("DB updated successfully!")
+                        }
+                    })
+                })
+            }else{
+                db.query(`update users set preferred_temp='${preferred_temp}', location='${location}', alarm_time_weekday='${alarm_time_weekday}', alarm_time_weekend='${alarm_time_weekend}', alarm_on='${alarm_on}', name='${name}' where username='${user_details.username}';`, (error, results)=>{
+                    if(error){
+                        console.log("error in settings function at update: ", error)
+                        return res.status(400).send({status: 400, msg:"error in settings function at update"})
+                    }else{
+                        console.log("DB updated successfully!")
+                    }
+                })
+            }
         }
         return res.status(200).send({status: 200, body:{preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username:user_details.username, light_on: user_details.light_on, curtain_on: user_details.curtain_on}, msg: "Updated the settings successfully!"})
     }catch(e){
-        console.log("Error in updateThermostat: ", e)
+        console.log("Error in Settings: ", e)
         return res.status(400).send({status: 400, msg:"error in settings function"})
     }
 }
