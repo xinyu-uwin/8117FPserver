@@ -4,6 +4,7 @@ const https = require('https')
 const db = require('../database/connection.js')
 const email = require('../emails/send_otp')
 const iotController = require('../connect_to_aws/publish_to_iot.js')
+const axios = require('axios')
 
 
 // Register new user
@@ -25,17 +26,25 @@ exports.register = (req, res) => {
             }
 
             let hashedPassword = await bcrypt.hash(password, 8)
-
-            // insert user details into db
-            let q = `insert into users(username,password,location,alarm_time_weekday,alarm_time_weekend,preferred_temp,name) values('${username}','${hashedPassword}','${location}','${alarm_time_weekday}','${alarm_time_weekend}','${preferred_temp}','${name}');`
-            db.query(q, (error, results)=>{
-                if(error){
-                    console.log("error in register function at insert: ", error)
-                    return res.status(400).send({status: 400, msg:"error in register function at insert"})
-                }
-                else{
-                    return res.status(200).send({status: 200, msg: "User registered Successfully!"})
-                }
+            let api = process.env.ABSTRACT_TIMEZONE_API_3
+            axios.get('https://timezone.abstractapi.com/v1/current_time/?api_key='+api+'&location='+location)
+            .then(response => {
+                let {timezone_location} = response.data
+                // insert user details into db
+                let q = `insert into users(username,password,location,alarm_time_weekday,alarm_time_weekend,preferred_temp,name,timezone_location) values('${username}','${hashedPassword}','${location}','${alarm_time_weekday}','${alarm_time_weekend}','${preferred_temp}','${name}','${timezone_location}');`
+                db.query(q, (error, result)=>{
+                    if(error){
+                        console.log("error in register function at insert: ", error)
+                        return res.status(400).send({status: 400, msg:"error in register function at insert"})
+                    }
+                    else{
+                        return res.status(200).send({status: 200, msg: "User registered Successfully!"})
+                    }
+                })
+            })
+            .catch(error => {
+                console.log("In correct lcoation entered!")
+                return res.status(400).send({status: 400, msg:"Enter a valid Location!"})
             })
         })
     }catch(e){
@@ -358,8 +367,8 @@ exports.updateThermostat = (req, res) => {
 exports.alarmTrigger = async (req, res) => {
     try{
         console.log("In alarmTrigger")
-        // console.log(req.userdetails)
         const user_details = req.userdetails
+        // console.log(user_details)
         let {thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on, heat, cold} = user_details
         let climate=""
         let topic = ""
@@ -378,6 +387,10 @@ exports.alarmTrigger = async (req, res) => {
         https.get(api, (response) => {
             if(response.statusCode != 200){
                 console.log("response statusCode " + response.statusCode + " is received, for weather data in alarmTrigger func!")
+                if(req.no_return == true){
+                    console.log("City Not found!")
+                    return 404
+                }
                 return res.send({status: 404, msg: "City not found! reenter the city!"})
             }
             response.on('data', (data)=>{
@@ -395,13 +408,13 @@ exports.alarmTrigger = async (req, res) => {
                 // console.log("climate:", climate)
 
                 if(climate.toLocaleLowerCase().includes("cloud") || climate.toLocaleLowerCase().includes("mist") || climate.toLocaleLowerCase().includes("fog")){
-                    console.log(">> On Cloudy Day!")
+                    console.log(">> It is Cloudy!")
                     console.log("Light-on , Curtian-Close, Increase Temperature!")
                     curtain_on = 0
                     light_on = 100
                     thermostat_temp = 26
                 }else{
-                    console.log(">> On Sunny Day!")
+                    console.log(">> It is Sunny!")
                     console.log("Light-off , Curtian-Open, Temperature to preferred temperature!")
                     curtain_on = 100
                     light_on = 0
@@ -427,16 +440,26 @@ exports.alarmTrigger = async (req, res) => {
                 db.query(`update users set light_on='${light_on}', curtain_on='${curtain_on}', thermostat_temp='${thermostat_temp}' where username='${user_details.username}'`, (error, results)=>{
                     if(error){
                         console.log("error in alarmTrigger function at update: ", error)
+                        if(req.no_return == true){
+                            return 400
+                        }
                         return res.status(400).send({status: 400, msg:"error in alarmTrigger function at update"})
                     }else{
                         console.log("DB updated successfully!")
                     }
                 })
+                if(req.no_return == true){
+                    console.log("Alarm trigger done!")
+                    return 200
+                }
                 return res.status(200).send({status: 200, body:{thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on}, msg: weather_details.description})
             })
         })
     }catch(e){
         console.log("Error in alarmTrigger: ", e)
+        if(req.no_return == true){
+            return 400
+        }
         return res.status(400).send({status: 400, msg:"error in alarmTrigger function"})
     }
 }
