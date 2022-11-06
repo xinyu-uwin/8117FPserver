@@ -5,17 +5,18 @@ const middleware = require('../middleware/userDetails')
 const db = require('../database/connection.js')
 const cron = require('node-cron')
 const automateControl = require('../controllers/automation.js')
+const axios = require('axios');
 
 db.connect()
 
 // Cron Job
-// cron.schedule("*/10 * * * * *", function() {
+// cron.schedule("*/30 * * * * *", function() {
 //     let check_date = new Date()
 //     console.log("--> Auto-Thermostat Check at ", check_date)
-//     automateControl.automateThermostat()
+//     // automateControl.automateThermostat()
 
 //     // Check time and send alarmTrigger
-//     // automateControl.automateAlarmTrigger()
+//     automateControl.automateAlarmTrigger()
 // })
 
 const router = express.Router()
