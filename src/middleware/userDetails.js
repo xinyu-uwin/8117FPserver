@@ -2,7 +2,7 @@ const db = require('../database/connection.js')
 
 // User login
 exports.details = async (req, res, next) => {
-    console.log("In middleware details")
+    // console.log("In middleware details")
     try{
         let username = req.body.username.toString()
         
