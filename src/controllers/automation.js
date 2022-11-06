@@ -2,6 +2,9 @@ const { request } = require('express')
 const https = require('https')
 const db = require('../database/connection.js')
 const iotController = require('../connect_to_aws/publish_to_iot.js')
+const userController = require('../controllers/user')
+const axios = require('axios')
+
 
 // Check if its sunny or cloudy and Set thermostat
 exports.automateThermostat = ()=>{
@@ -79,10 +82,53 @@ exports.automateThermostat = ()=>{
     })
 }
 
-exports.automateAlarmTrigger = () => {
-    // Get time based on location and check the alarm time
-    
+exports.automateAlarmTrigger = async () => {
+    try{
+        console.log("Alarm Check...")
+        db.query(`select * from users;`, (error, results)=>{
+            if(error){
+                console.log("error in checkOutsideTemperature function at select:", error)
+                return "error in checkOutsideTemperature"
+            }
+            else if(results.rows.length == 0){
+                console.log("No Users!")
+                return "No users!"
+            }else{
+                let users_list = results.rows
+                let user_details, alarm_time
 
+                for(let i=0; i<users_list.length;i++){
+                    user_details = users_list[i]
+                    let req = {"userdetails": user_details, "body":{}, "no_return":true}
+                    let {username, alarm_time_weekday, alarm_time_weekend, timezone_location} = user_details
+                    let date_string = new Date().toLocaleString("en-US", { timeZone: timezone_location });
+                    current_date = new Date(date_string)
+                    let day = current_date.getDay(), hours = current_date.getHours().toString(), minutes = current_date.getMinutes()
+                    let minutes_str = minutes.toString()
+                    if(hours.length < 2){
+                        hours = "0"+hours
+                    }
+                    if(minutes.length < 2){
+                        minutes_str = "0" + minutes_str
+                    }
+                    let hours_list = [(hours + ":" + minutes_str)]
+                    if(day == 0 || day == 6){
+                        // weekend
+                        alarm_time = alarm_time_weekend
+                    }else{
+                        // weekday
+                        alarm_time = alarm_time_weekday
+                    }
+                    if(hours_list.includes(alarm_time)){
+                        userController.alarmTrigger(req)
+                    }
+                }
+            }
+        })
 
-    // Send trigger
+        // Send trigger
+    }catch(e){
+        console.log("E", e)
+        return e
+    }
 }
