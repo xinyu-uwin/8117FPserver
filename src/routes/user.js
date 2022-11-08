@@ -44,6 +44,7 @@ router.post('/user/device/control', middleware.details, userController.deviceCon
 router.post('/user/thermostat/update', middleware.details, userController.updateThermostat)
 // Get alarm-on trigger to on the alarm features
 router.post('/user/alarm-on/trigger', middleware.details, userController.alarmTrigger)
+router.post('/user/alarm-off/trigger', middleware.details, userController.alarmTriggerOff)
 
 router.post('/user/request/otp', userController.forgot_password_send_otp)
 router.post('/user/verify/otp', userController.forgot_password_verify_otp)
