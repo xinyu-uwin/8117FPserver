@@ -480,3 +480,36 @@ exports.alarmTrigger = async (req, res) => {
         return res.status(400).send({status: 400, msg:"error in alarmTrigger function"})
     }
 }
+
+// Off the alarm
+exports.alarmTriggerOff = (req, res) => {
+    try{
+        const user_details = req.userdetails
+        // console.log(user_details)
+        let {thermostat_temp, preferred_temp, username, light_on, heat, cold} = user_details
+        let topic, data = {}
+        light_on = 0, thermostat_temp = preferred_temp
+
+        topic = "trigger/light_on"
+        data = {"light-on": light_on}
+        iotController.publish_to_iot(topic, data)
+        
+        topic = "trigger/thermostat_update"
+        data = {"temperature": thermostat_temp, "heat": heat, "cold": cold}
+        iotController.publish_to_iot(topic, data)
+
+        // Update details in DB
+        db.query(`update users set light_on='${light_on}', thermostat_temp='${thermostat_temp}' where username='${username}'`, (error, results)=>{
+            if(error){
+                console.log("error in alarmTriggerOff function at update: ", error)
+                return res.status(400).send({status: 400, msg:"error in alarmTriggerOff function at update"})
+            }else{
+                console.log("DB updated successfully!")
+            }
+        })
+
+        return res.status(200).send({status: 200, msg: "Alarm tunred off!"})
+    }catch(e){
+        console.log("Error in alarmTriggerOff():", e)
+    }
+}
