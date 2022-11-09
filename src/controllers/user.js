@@ -10,62 +10,71 @@ const axios = require('axios')
 // Register new user
 exports.register = (req, res) => {
     try{
-        console.log("In register")
-
         // console.log("req.body: ", req.body)
-        const {username, password, location, alarm_time_weekday, alarm_time_weekend, preferred_temp, name} = req.body
-
+        const {username, room_name, password, location, alarm_time_weekday, alarm_time_weekend, preferred_temp, name} = req.body
+        if(username==null || room_name==null || password==null || location==null || alarm_time_weekday==null || alarm_time_weekend==null || preferred_temp==null || name==null){
+            return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
+        }
         // check if user already exists or not
         db.query(`select username from users where username='${username}';`, async (error, results)=>{
             if(error){
                 console.log("error in register function at select:", error)
-                return res.status(400).send({status: 400, msg:"error in register function at select"})
+                return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
             }
             else if(results.rows.length > 0){
                 return res.status(400).send({status: 400, msg: "User already exists! Try login"})
             }
-
             let hashedPassword = await bcrypt.hash(password, 8)
             let api = process.env.ABSTRACT_TIMEZONE_API_3
             axios.get('https://timezone.abstractapi.com/v1/current_time/?api_key='+api+'&location='+location)
             .then(response => {
                 let {timezone_location} = response.data
                 // insert user details into db
-                let q = `insert into users(username,password,location,alarm_time_weekday,alarm_time_weekend,preferred_temp,name,timezone_location) values('${username}','${hashedPassword}','${location}','${alarm_time_weekday}','${alarm_time_weekend}','${preferred_temp}','${name}','${timezone_location}');`
-                db.query(q, (error, result)=>{
+                let q1 = `insert into users(username,password,location,name,timezone_location) values('${username}','${hashedPassword}','${location}','${name}','${timezone_location}');`
+                let q2 = `insert into rooms(room_name,username,alarm_time_weekday,alarm_time_weekend,preferred_temp) values('${room_name}','${username}','${alarm_time_weekday}','${alarm_time_weekend}','${preferred_temp}');`
+                db.query(q1, (error, result)=>{
                     if(error){
                         console.log("error in register function at insert: ", error)
-                        return res.status(400).send({status: 400, msg:"error in register function at insert"})
+                        return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
                     }
                     else{
-                        return res.status(200).send({status: 200, msg: "User registered Successfully!"})
+                        db.query(q2, (error, result)=>{
+                            if(error){
+                                console.log("error in register function at insert: ", error)
+                                return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
+                            }
+                            else{
+                                console.log("User '"+ username + "' Registered Successfully!")
+                                return res.status(200).send({status: 200, msg: "User registered Successfully!"})
+                            }
+                        })
                     }
                 })
             })
             .catch(error => {
-                console.log("In correct lcoation entered!")
+                console.log("In correct location entered!")
                 return res.status(400).send({status: 400, msg:"Enter a valid Location!"})
             })
         })
     }catch(e){
         console.log("Error in register: ", e)
-        return res.status(400).send({status: 400, msg:"error in register function"})
+        return res.status(400).send({status: 400, msg:"Incorrect data received!"})
     }
 }
 
 // User login
 exports.login = async (req, res) => {
     try{
-        console.log("In login")
-
-        // console.log("req.body: ", req.body)
-        const {username, password} = req.body
-
+        let {username, password} = req.body
+        if(username == null){
+            return res.status(400).send({status: 400, msg:"Incorrect data provided, Please try again!"})
+        }
+        if(password) password = password.toString()
         // get user password to verify
         db.query(`select * from users where username='${username}';`, async (error, results)=>{
             if(error){
                 console.log("error in register function at select:", error)
-                return res.status(400).send({status: 400, msg:"error in register function at select"})
+                return res.status(400).send({status: 400, msg:"Incorrect data provided, Please try again!"})
             }
             else if(results.rows.length == 0){
                 return res.status(401).send({status: 404, msg: "User not found, Please register!!"})
@@ -75,11 +84,17 @@ exports.login = async (req, res) => {
                     let hashedPassword = results.rows[0].password
                     let password_correct = await bcrypt.compare(password, hashedPassword)
                     if(password_correct){
-                        const {location, light_on, curtain_on, alarm_time_weekday, alarm_time_weekend, alarm_on, preferred_temp, name, heat, cold, thermostat_on} = results.rows[0]
-                        let send_data = {username, location, light_on, curtain_on, alarm_time_weekday, alarm_time_weekend, alarm_on, preferred_temp, name, heat, cold, thermostat_on}
-                        
-                        // send jwt token
-                        return res.status(200).send({status: 200, body: send_data, msg:"User loggedIn!"})
+                        const {location,name} = results.rows[0]
+                        db.query(`select * from rooms where username='${username}'`, (error, result)=>{
+                            if(error){
+                                console.log("error in register function at insert: ", error)
+                                return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
+                            }
+                            else{
+                                let send_data = {username, name, location, "rooms":result.rows, "rooms_count":result.rows.length}
+                                return res.status(200).send({status: 200, body: send_data, msg:"User loggedIn!"})
+                            }
+                        })
                     }else{
                         return res.status(401).send({status: 401, msg: "Invalid Password! Try again!"})
                     }
@@ -91,20 +106,78 @@ exports.login = async (req, res) => {
         })
     }catch(e){
         console.log("Error in login: ", e)
-        return res.status(400).send({status: 400, msg:"error in login function"})
+        return res.status(400).send({status: 400, msg:"Incorrect data received!"})
     }
 }
 
 // get userdetails
 exports.userdetails = (req, res) => {
     try{
-        console.log("In userdetails")
-        // console.log("req.userdetails: ", req.userdetails)
-        const user_details = req.userdetails
-        return res.status(200).send({status: 200, body: user_details})
+        let user_details = req.userdetails
+        return res.status(200).send({status: 200, body: user_details, msg:"User Details found!"})
     }catch(e){
         console.log("Error in userdetails: ", e)
-        return res.status(400).send({status: 400, msg:"error in userdetails function"})
+        return res.status(400).send({status: 400, msg:"Incorrect correct data received!"})
+    }
+}
+
+// Add a room
+exports.addRoom = (req, res) => {
+    try{
+        let room_names = req.userdetails.room_names
+        let {room_name,username,alarm_time_weekday,alarm_time_weekend,preferred_temp} = req.body
+
+        if(room_name == null || username==null || alarm_time_weekday==null || alarm_time_weekend == null || preferred_temp == null){
+            return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
+        }
+
+        if(room_names.includes(room_name)){
+            return res.status(400).send({status: 400, msg: "Room name already exists! Try again"})
+        }
+
+        let q1 = `insert into rooms(room_name,username,alarm_time_weekday,alarm_time_weekend,preferred_temp) values('${room_name}','${username}','${alarm_time_weekday}','${alarm_time_weekend}','${preferred_temp}');`
+        db.query(q1, (error, result)=>{
+            if(error){
+                console.log("error in roomAdd function at insert: ", error)
+                return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
+            }
+            console.log("Room '"+ room_name + "' Added Successfully!")
+            let room_details = {room_name,username,alarm_time_weekday,alarm_time_weekend,preferred_temp}
+            return res.status(200).send({status: 200, body:room_details, msg: "Room added Successfully!"})
+        })
+    }catch(e){
+        console.log("Error in userRoomAdd: ", e)
+        return res.status(400).send({status: 400, msg:"Incorrect correct data received!"})
+    }
+}
+
+// Remove a room
+exports.removeRoom = (req, res) => {
+    try{
+        let user_details = req.userdetails
+        let {username, room_name} = req.body
+        let {room_details, room_names, rooms_count} = user_details
+
+        if(room_name == null || username==null){
+            return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
+        }
+
+        if(room_names.includes(room_name) == false){
+            return res.status(200).send({status: 200, msg: "Room Removed Successfully!"})
+        }
+
+        let q1 = `delete from rooms where room_name='${room_name}';`
+        db.query(q1, (error, result)=>{
+            if(error){
+                console.log("error in roomRemove function at insert: ", error)
+                return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
+            }
+            console.log("Room '"+ room_name + "' Removed Successfully!")
+            return res.status(200).send({status: 200, msg: "Room Removed Successfully!"})
+        })
+    }catch(e){
+        console.log("Error in roomRemove: ", e)
+        return res.status(400).send({status: 400, msg:"Incorrect correct data received!"})
     }
 }
 
@@ -133,9 +206,6 @@ exports.logout = async (req, res) => {
 // Forgot password send otp
 exports.forgot_password_send_otp = async (req, res) => {
     try{
-        console.log("In forgot_password_send_otp!")
-
-        // console.log("req.body: ", req.body)
         const {username} = req.body
 
         // get user password to verify
@@ -158,8 +228,6 @@ exports.forgot_password_send_otp = async (req, res) => {
                     if(error){
                         console.log("error in forgot_password_send_otp function at insert: ", error)
                         return res.status(400).send({status: 400, msg:"error in forgot_password_send_otp function at insert"})
-                    }else{
-                        console.log("OTP stored successfully!")
                     }
                     return res.status(200).send({status: 200, body: {otp}, msg:"OTP sent successfully!"})
                 })
@@ -174,9 +242,6 @@ exports.forgot_password_send_otp = async (req, res) => {
 // Forgot password verify otp
 exports.forgot_password_verify_otp = async (req, res) => {
     try{
-        console.log("In forgot_password_verify_otp!")
-
-        // console.log("req.body: ", req.body)
         const {username} = req.body
         const otp_received = req.body.otp
 
@@ -205,9 +270,6 @@ exports.forgot_password_verify_otp = async (req, res) => {
 // reset password
 exports.reset_password = async (req, res) => {
     try{
-        console.log("In reset_password!")
-
-        // console.log("req.body: ", req.body)
         const {username, password} = req.body
 
         let hashedPassword = await bcrypt.hash(password, 8)
@@ -231,101 +293,124 @@ exports.reset_password = async (req, res) => {
 // settings
 exports.settings = (req, res) => {
     try{
-        console.log("In Settings")
-        // console.log(req.userdetails, req.body)
-        const user_details = req.userdetails
-        let {preferred_temp, location, timezone_location, alarm_time_weekday, alarm_time_weekend, alarm_on, name} = user_details
-        let update_db = 0, update_timezone=0
+        let {room_names, location, timezone_location, name} = req.userdetails
+        let {room_name, username, new_room_name} = req.body
+        let {preferred_temp,alarm_time_weekday, alarm_time_weekend} = req.userdetails.room_details
+        let update_users = 0, update_timezone=0, update_rooms=0, update_room_name = 0, old_room_name = room_name
 
+        if(new_room_name){
+            if(room_names.includes(new_room_name)){
+                return res.status(400).send({status: 400, msg:"Room name already exists, Try with new name!"})
+            }
+            update_rooms = 1
+            update_room_name = 1
+            room_name = new_room_name
+        }
         if((req.body.preferred_temp || req.body.preferred_temp==0) && (req.body.preferred_temp != preferred_temp)){
-            update_db = 1
+            update_rooms = 1
             preferred_temp = req.body.preferred_temp
         }if(req.body.location && req.body.location != location){
-            update_db = 1
+            update_users = 1
             update_timezone = 1
-            location = req.body.location    
+            location = req.body.location
         }if(req.body.alarm_time_weekday && req.body.alarm_time_weekday != alarm_time_weekday){
-            update_db = 1
+            update_rooms = 1
             alarm_time_weekday = req.body.alarm_time_weekday
         }if(req.body.alarm_time_weekend && req.body.alarm_time_weekend != alarm_time_weekend){
-            update_db = 1
+            update_rooms = 1
             alarm_time_weekend = req.body.alarm_time_weekend
         }if(req.body.name && req.body.name != name){
-            update_db = 1
+            update_users = 1
             name = req.body.name
-        }if((req.body.alarm_on || req.body.alarm_on==0) && (req.body.alarm_on != alarm_on)){
-            update_db = 1
-            alarm_on = req.body.alarm_on
         }
 
-        if(update_db == 1){
+        if(update_users == 1){
             if(update_timezone == 1){
                 let api = process.env.ABSTRACT_TIMEZONE_API_3
                 axios.get('https://timezone.abstractapi.com/v1/current_time/?api_key='+api+'&location='+location)
                 .then(response => {
                     timezone_location = response.data.timezone_location
-                    db.query(`update users set preferred_temp='${preferred_temp}', location='${location}', timezone_location='${timezone_location}', alarm_time_weekday='${alarm_time_weekday}', alarm_time_weekend='${alarm_time_weekend}', alarm_on='${alarm_on}', name='${name}' where username='${user_details.username}';`, (error, results)=>{
+                    db.query(`update users set location='${location}', timezone_location='${timezone_location}',name='${name}' where username='${username}';`, (error, results)=>{
                         if(error){
                             console.log("error in settings function at update: ", error)
-                            return res.status(400).send({status: 400, msg:"error in settings function at update"})
-                        }else{
-                            console.log("DB updated successfully!")
+                            return res.status(400).send({status: 400, msg:"Incorrect data received!"})
                         }
                     })
                 })
             }else{
-                db.query(`update users set preferred_temp='${preferred_temp}', location='${location}', alarm_time_weekday='${alarm_time_weekday}', alarm_time_weekend='${alarm_time_weekend}', alarm_on='${alarm_on}', name='${name}' where username='${user_details.username}';`, (error, results)=>{
+                db.query(`update users set location='${location}',name='${name}' where username='${username}';`, (error, results)=>{
                     if(error){
                         console.log("error in settings function at update: ", error)
-                        return res.status(400).send({status: 400, msg:"error in settings function at update"})
+                        return res.status(400).send({status: 400, msg:"Incorrect data received!"})
+                    }
+                })
+            }
+        }
+        if(update_rooms == 1){
+            if(update_room_name == 1){
+                db.query(`update rooms set preferred_temp='${preferred_temp}', alarm_time_weekday='${alarm_time_weekday}', alarm_time_weekend='${alarm_time_weekend}', room_name='${new_room_name}' where username='${username}' and room_name='${old_room_name}';`, (error, results)=>{
+                    if(error){
+                        console.log("error in settings function at update: ", error)
+                        return res.status(400).send({status: 400, msg:"Incorrect data received!"})
+                    }else{
+                        console.log("DB updated successfully!")
+                    }
+                })
+            }else{
+                db.query(`update rooms set preferred_temp='${preferred_temp}', alarm_time_weekday='${alarm_time_weekday}', alarm_time_weekend='${alarm_time_weekend}' where username='${username}' and room_name='${room_name}';`, (error, results)=>{
+                    if(error){
+                        console.log("error in settings function at update: ", error)
+                        return res.status(400).send({status: 400, msg:"Incorrect data received!"})
                     }else{
                         console.log("DB updated successfully!")
                     }
                 })
             }
         }
-        return res.status(200).send({status: 200, body:{preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username:user_details.username, light_on: user_details.light_on, curtain_on: user_details.curtain_on}, msg: "Updated the settings successfully!"})
+        return res.status(200).send({status: 200, body:{room_name, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, name, username}, msg: "Updated the settings successfully!"})
     }catch(e){
         console.log("Error in Settings: ", e)
-        return res.status(400).send({status: 400, msg:"error in settings function"})
+        return res.status(400).send({status: 400, msg:"Incorrect data rcevied!"})
     }
 }
 
 // device control on/off
 exports.deviceControl = (req, res) => {
     try{
-        console.log("In deviceControl")
-        // console.log(req.userdetails)
         const user_details = req.userdetails
-        let {light_on, curtain_on} = user_details
+        let {light_on, curtain_on, room_name, username} = user_details.room_details
         let topic = ""
         let data = {}
         let update_db = 0
+
+        if(req.body.username == null || req.body.room_name == null){
+            return res.status(400).send({status: 400, msg:"Incorrect data recevied, Try again!"})
+        }
 
         if((req.body.light_on || req.body.light_on==0) && (req.body.light_on != light_on)){
             update_db = 1
             light_on = req.body.light_on
             topic = "trigger/light_on"
-            data = {"light-on": light_on}
+            data = {"light-on": light_on, room_name, username}
             iotController.publish_to_iot(topic, data)
         }if((req.body.curtain_on || req.body.curtain_on==0) && (req.body.curtain_on != curtain_on)){
             update_db = 1
             curtain_on = req.body.curtain_on
             topic = "trigger/curtain_open"
-            data = {"curtain-open": curtain_on}
+            data = {"curtain-open": curtain_on, room_name, username}
             iotController.publish_to_iot(topic, data)
         }
         if(update_db == 1){
-            db.query(`update users set light_on='${light_on}', curtain_on='${curtain_on}' where username='${user_details.username}'`, (error, results)=>{
+            db.query(`update rooms set light_on='${light_on}', curtain_on='${curtain_on}' where username='${username}' and room_name='${room_name}'`, (error, results)=>{
                 if(error){
                     console.log("error in deviceControl function at update: ", error)
-                    return res.status(400).send({status: 400, msg:"error in deviceControl function at update"})
+                    return res.status(400).send({status: 400, msg:"Incorrect data recevied, Try again!"})
                 }else{
                     console.log("DB updated successfully!")
                 }
             })
         }
-        return res.status(200).send({status: 200, body:{light_on, curtain_on}, msg: "Updated the devices successfully!"})
+        return res.status(200).send({status: 200, body:{room_name, light_on, curtain_on}, msg: "Updated the devices successfully!"})
     }catch(e){
         console.log("Error in deviceControl: ", e)
         return res.status(400).send({status: 400, msg:"error in deviceControl function"})
@@ -338,7 +423,12 @@ exports.updateThermostat = (req, res) => {
         console.log("In updateThermostat")
         // console.log(req.userdetails)
         const user_details = req.userdetails
-        let {thermostat_on, thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on, heat ,cold} = user_details
+        let {thermostat_temp,username,heat,cold, room_name} = user_details.room_details
+
+        if(req.body.username == null || req.body.room_name == null){
+            return res.status(400).send({status: 400, msg:"Incorrect data recevied, Try again!"})
+        }
+
         let update_db = 0
 
         topic = "trigger/thermostat_update"
@@ -362,9 +452,9 @@ exports.updateThermostat = (req, res) => {
         }
 
         if(update_db == 1){
-            data = {"temperature":thermostat_temp, heat, cold}
+            data = {username,room_name,"temperature":thermostat_temp, heat, cold}
             iotController.publish_to_iot(topic, data)
-            db.query(`update users set heat='${heat}', cold='${cold}', thermostat_temp='${thermostat_temp}' where username='${user_details.username}';`, (error, results)=>{
+            db.query(`update rooms set heat='${heat}', cold='${cold}', thermostat_temp='${thermostat_temp}' where username='${user_details.username}' and room_name='${room_name}';`, (error, results)=>{
                 if(error){
                     console.log("error in updateThermostat function at update: ", error)
                     return res.status(400).send({status: 400, msg:"error in updateThermostat function at update"})
@@ -373,7 +463,7 @@ exports.updateThermostat = (req, res) => {
                 }
             })
         }
-        return res.status(200).send({status: 200, body:{thermostat_on, thermostat_temp, preferred_temp, heat, cold, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on}, msg: "Updated the thermostat successfully!"})
+        return res.status(200).send({status: 200, body:{room_name, thermostat_temp, heat, cold}, msg: "Updated the thermostat successfully!"})
     }catch(e){
         console.log("Error in updateThermostat: ", e)
         return res.status(400).send({status: 400, msg:"error in updateThermostat function"})
@@ -383,10 +473,11 @@ exports.updateThermostat = (req, res) => {
 // When alram time is up
 exports.alarmTrigger = async (req, res) => {
     try{
-        console.log("In alarmTrigger")
+        console.log("Alarm Trigger")
         const user_details = req.userdetails
         // console.log(user_details)
-        let {thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on, heat, cold} = user_details
+        let {thermostat_temp, preferred_temp, alarm_time_weekday, alarm_time_weekend, username, light_on, curtain_on, heat, cold, room_name} = user_details.room_details
+        let {location,name} = user_details
         let climate=""
         let topic = ""
         let data = {}
@@ -425,13 +516,13 @@ exports.alarmTrigger = async (req, res) => {
                 // console.log("climate:", climate)
 
                 if(climate.toLocaleLowerCase().includes("cloud") || climate.toLocaleLowerCase().includes("mist") || climate.toLocaleLowerCase().includes("fog")){
-                    console.log(">> It is Cloudy!")
+                    console.log(">> It's Cloudy!")
                     console.log("Light-on , Curtian-Close, Increase Temperature!")
                     curtain_on = 0
                     light_on = 100
                     thermostat_temp = 26
                 }else{
-                    console.log(">> It is Sunny!")
+                    console.log(">> It's clear sky!")
                     console.log("Light-off , Curtian-Open, Temperature to preferred temperature!")
                     curtain_on = 100
                     light_on = 0
@@ -440,27 +531,27 @@ exports.alarmTrigger = async (req, res) => {
 
                 // Trigger to IOT devices
                 topic = "trigger/curtain_open"
-                data = {"curtain-open": curtain_on}
+                data = {"curtain-open": curtain_on, room_name, username}
                 iotController.publish_to_iot(topic, data)
                 
                 topic = "trigger/light_on"
-                data = {"light-on": light_on}
+                data = {"light-on": light_on, room_name, username}
                 iotController.publish_to_iot(topic, data)
                 
                 topic = "trigger/thermostat_update"
-                data = {"temperature": thermostat_temp, "heat": heat, "cold": cold}
+                data = {"temperature": thermostat_temp, "heat": heat, "cold": cold, room_name, username}
                 iotController.publish_to_iot(topic, data)
                 
                 // console.log("On alarm")
 
                 // Update details in DB
-                db.query(`update users set light_on='${light_on}', curtain_on='${curtain_on}', thermostat_temp='${thermostat_temp}' where username='${user_details.username}'`, (error, results)=>{
+                db.query(`update rooms set light_on='${light_on}', curtain_on='${curtain_on}', thermostat_temp='${thermostat_temp}' where username='${user_details.username}' and room_name='${room_name}'`, (error, results)=>{
                     if(error){
                         console.log("error in alarmTrigger function at update: ", error)
                         if(req.no_return == true){
                             return 400
                         }
-                        return res.status(400).send({status: 400, msg:"error in alarmTrigger function at update"})
+                        return res.status(400).send({status: 400, msg:"Incorrect data received, Try again!"})
                     }else{
                         console.log("DB updated successfully!")
                     }
@@ -469,7 +560,7 @@ exports.alarmTrigger = async (req, res) => {
                     console.log("Alarm trigger done!")
                     return 200
                 }
-                return res.status(200).send({status: 200, body:{thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, alarm_on, name, username, light_on, curtain_on}, msg: weather_details.description})
+                return res.status(200).send({status: 200, body:{room_name,thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, name, username, light_on, curtain_on}, msg: weather_details.description})
             })
         })
     }catch(e){
@@ -486,29 +577,28 @@ exports.alarmTriggerOff = (req, res) => {
     try{
         const user_details = req.userdetails
         // console.log(user_details)
-        let {thermostat_temp, preferred_temp, username, light_on, heat, cold} = user_details
+        let {thermostat_temp, preferred_temp, username, light_on, heat, cold, room_name} = user_details.room_details
         let topic, data = {}
         light_on = 0, thermostat_temp = preferred_temp
 
         topic = "trigger/light_on"
-        data = {"light-on": light_on}
+        data = {"light-on": light_on, room_name, username}
         iotController.publish_to_iot(topic, data)
         
         topic = "trigger/thermostat_update"
-        data = {"temperature": thermostat_temp, "heat": heat, "cold": cold}
+        data = {"temperature": thermostat_temp, "heat": heat, "cold": cold, room_name, username}
         iotController.publish_to_iot(topic, data)
 
         // Update details in DB
-        db.query(`update users set light_on='${light_on}', thermostat_temp='${thermostat_temp}' where username='${username}'`, (error, results)=>{
+        db.query(`update rooms set light_on='${light_on}', thermostat_temp='${thermostat_temp}' where username='${username}' and room_name='${room_name}'`, (error, results)=>{
             if(error){
                 console.log("error in alarmTriggerOff function at update: ", error)
-                return res.status(400).send({status: 400, msg:"error in alarmTriggerOff function at update"})
+                return res.status(400).send({status: 400, msg:"Incorrect data received!"})
             }else{
                 console.log("DB updated successfully!")
+                return res.status(200).send({status: 200, msg: "Alarm tunred off!"})
             }
         })
-
-        return res.status(200).send({status: 200, msg: "Alarm tunred off!"})
     }catch(e){
         console.log("Error in alarmTriggerOff():", e)
     }
