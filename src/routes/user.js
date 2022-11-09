@@ -22,8 +22,7 @@ db.connect()
 const router = express.Router()
 
 router.get('/weatherdata', weatherController.weatherdata)
-router.get('/user/room-details', middleware.details, userController.userdetails)
-
+router.post('/user/room-details', middleware.details, userController.userdetails)
 router.post('/user/register', userController.register)
 router.post('/user/login', userController.login)
 router.get('/user/logout', middleware.details, userController.logout)
