@@ -113,8 +113,14 @@ exports.login = async (req, res) => {
 // get userdetails
 exports.userdetails = (req, res) => {
     try{
-        let user_details = req.userdetails
-        return res.status(200).send({status: 200, body: user_details, msg:"User Details found!"})
+        let {username, name, location, room_names, rooms_count, room_list, room_details} = req.userdetails
+        let send_data = {username,name, location, room_names, rooms_count}
+        if(req.body.room_name){
+            send_data.room_details = room_details
+        }else{
+            send_data.room_list = room_list
+        }
+        return res.status(200).send({status: 200, body: send_data, msg:"User Details found!"})
     }catch(e){
         console.log("Error in userdetails: ", e)
         return res.status(400).send({status: 400, msg:"Incorrect correct data received!"})

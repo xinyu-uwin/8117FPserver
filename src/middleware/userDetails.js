@@ -41,7 +41,7 @@ exports.details = async (req, res, next) => {
                         }
                     }
                 }
-                send_data = {username, name, location, room_details, room_names, "rooms_count":result.rows.length}
+                send_data = {username, name, location, room_details, room_names, "rooms_count":result.rows.length, room_list}
                 req.userdetails = send_data
                 next()
             })
