@@ -6,11 +6,17 @@ def customCallback(client,userdata,message):
 	data = json.loads(message.payload)
 	# print("Data received from Server: ", data)
 	time = datetime.datetime.now()
+	
+	username = data["username"]
+	room_name = data["room_name"]
+	print(">>> In room: " + room_name + " of user: " + username, end="\n")
+
 	print(time, end=" ")
 	if data["heat"] == 1:
 		print("--- heater status = ON with Temperature = {}".format(data["temperature"]))
 	elif data["cold"] == 1:
 		print("--- cooler status = ON with Temperature = {}".format(data["temperature"]))
+	print("\n")
 
 myMQTTClient = AWSIoTMQTTClient("thermostat")
 myMQTTClient.configureEndpoint("a32yk77mbrevmu-ats.iot.us-east-2.amazonaws.com", 8883)
@@ -22,3 +28,4 @@ print("Device Thermostat Connected to server!")
 myMQTTClient.subscribe("trigger/thermostat_update",1,customCallback)
 # print("Device Thermostat waiting for a trigger...\n")
 exit = input()
+
