@@ -1,3 +1,6 @@
+/**
+ * @author Naveen
+ */
 const express = require('express')
 const userController = require('../controllers/user')
 const weatherController = require('../controllers/weather')
@@ -9,18 +12,22 @@ const axios = require('axios');
 
 db.connect()
 
-// Cron Job
+/**
+ * Cron Job
+ */
 // cron.schedule("*/30 * * * * *", function() {
 //     let check_date = new Date()
 //     console.log("--> Auto-Thermostat Check at ", check_date)
 //     // automateControl.automateThermostat()
-
-//     // Check time and send alarmTrigger
+// 
 //     automateControl.automateAlarmTrigger()
 // })
 
 const router = express.Router()
 
+/**
+ * List of routes and there corresponding methods
+ */
 router.get('/weatherdata', weatherController.weatherdata)
 router.post('/user/room-details', middleware.details, userController.userdetails)
 router.post('/user/register', userController.register)
@@ -33,10 +40,8 @@ router.post('/user/device/control', middleware.details, userController.deviceCon
 router.post('/user/thermostat/update', middleware.details, userController.updateThermostat)
 router.post('/user/alarm-off/trigger', middleware.details, userController.alarmTriggerOff)
 router.post('/user/alarm-on/trigger', middleware.details, userController.alarmTrigger)
-// otp
 router.post('/user/request/otp', userController.forgot_password_send_otp)
 router.post('/user/verify/otp', userController.forgot_password_verify_otp)
 router.post('/user/reset/password', userController.reset_password)
-
 
 module.exports = router;
