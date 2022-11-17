@@ -1,14 +1,29 @@
+/**
+ * @author Naveen
+ */
+
 const db = require('../database/connection.js')
 
-// User login
+/**
+ * A middleware that gets called to verify a user
+ * @param {*} req request details
+ * @param {*} res sends response status and message
+ * @param {*} next proceeds to the next method
+ * @returns message to user if authentication is required
+ */
 exports.details = async (req, res, next) => {
-    // console.log("In middleware details")
     try{
+        /**
+         * Varaibles username and room_name
+         */
         let username = req.body.username.toString()
         let {room_name} = req.body
         if(username == null){
             return res.status(400).send({status: 400, msg:"Incorrect data provided, Please try again!"})
         }
+        /**
+         * Fetch user details from database
+         */
         db.query(`select name,location from users where username='${username}';`, async (error, results)=>{
             if(error){
                 console.log("error in middleware details function at select:", error)
