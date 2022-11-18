@@ -1,3 +1,10 @@
+/**
+ * @author Naveen
+ */
+
+/**
+ * imports
+ */
 const bcrypt = require('bcryptjs')
 const { request } = require('express')
 const https = require('https')
@@ -7,15 +14,21 @@ const iotController = require('../connect_to_aws/publish_to_iot.js')
 const axios = require('axios')
 
 
-// Register new user
+/**
+ * regsiters a new user
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.register = (req, res) => {
     try{
-        // console.log("req.body: ", req.body)
         const {username, room_name, password, location, alarm_time_weekday, alarm_time_weekend, preferred_temp, name} = req.body
         if(username==null || room_name==null || password==null || location==null || alarm_time_weekday==null || alarm_time_weekend==null || preferred_temp==null || name==null){
             return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
         }
-        // check if user already exists or not
+        /**
+         * Check if user already exists or not
+         */
         db.query(`select username from users where username='${username}';`, async (error, results)=>{
             if(error){
                 console.log("error in register function at select:", error)
@@ -26,10 +39,16 @@ exports.register = (req, res) => {
             }
             let hashedPassword = await bcrypt.hash(password, 8)
             let api = process.env.ABSTRACT_TIMEZONE_API_3
+            /**
+             * Send request to 'abstract' external API
+             * to get timezone based on location
+             */
             axios.get('https://timezone.abstractapi.com/v1/current_time/?api_key='+api+'&location='+location)
             .then(response => {
                 let {timezone_location} = response.data
-                // insert user details into db
+                /**
+                 * insert data into database tables
+                 */
                 let q1 = `insert into users(username,password,location,name,timezone_location) values('${username}','${hashedPassword}','${location}','${name}','${timezone_location}');`
                 let q2 = `insert into rooms(room_name,username,alarm_time_weekday,alarm_time_weekend,preferred_temp) values('${room_name}','${username}','${alarm_time_weekday}','${alarm_time_weekend}','${preferred_temp}');`
                 db.query(q1, (error, result)=>{
@@ -62,7 +81,12 @@ exports.register = (req, res) => {
     }
 }
 
-// User login
+/**
+ * validates user credentials
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.login = async (req, res) => {
     try{
         let {username, password} = req.body
@@ -70,7 +94,9 @@ exports.login = async (req, res) => {
             return res.status(400).send({status: 400, msg:"Incorrect data provided, Please try again!"})
         }
         if(password) password = password.toString()
-        // get user password to verify
+        /**
+         * get user password to verify the data
+         */
         db.query(`select * from users where username='${username}';`, async (error, results)=>{
             if(error){
                 console.log("error in register function at select:", error)
@@ -80,7 +106,9 @@ exports.login = async (req, res) => {
                 return res.status(401).send({status: 404, msg: "User not found, Please register!!"})
             }else{
                 if(password){
-                    // compare hashedPassword
+                    /**
+                     * compare hashedPassword by getting data from database
+                     */
                     let hashedPassword = results.rows[0].password
                     let password_correct = await bcrypt.compare(password, hashedPassword)
                     if(password_correct){
@@ -110,7 +138,12 @@ exports.login = async (req, res) => {
     }
 }
 
-// get userdetails
+/**
+ * fetches user details from database
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.userdetails = (req, res) => {
     try{
         let {username, name, location, room_names, rooms_count, room_list, room_details} = req.userdetails
@@ -127,7 +160,12 @@ exports.userdetails = (req, res) => {
     }
 }
 
-// Add a room
+/**
+ * Add a new room details for a user
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.addRoom = (req, res) => {
     try{
         let room_names = req.userdetails.room_names
@@ -157,7 +195,12 @@ exports.addRoom = (req, res) => {
     }
 }
 
-// Remove a room
+/**
+ * Remove a room details for a user
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.removeRoom = (req, res) => {
     try{
         let user_details = req.userdetails
@@ -187,13 +230,16 @@ exports.removeRoom = (req, res) => {
     }
 }
 
-// User logout
+/**
+ * Logout a user
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.logout = async (req, res) => {
     try{
         console.log("In logout")
-        // console.log(req.userdetails)
         const user_details = req.userdetails
-        // remove token
         db.query(`update users set token=${null} where username='${user_details.username}';`, (error, results)=>{
             if(error){
                 console.log("error in logout function at insert: ", error)
@@ -209,12 +255,18 @@ exports.logout = async (req, res) => {
     }  
 }
 
-// Forgot password send otp
+/**
+ * sends otp to user's mail to rest the password
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.forgot_password_send_otp = async (req, res) => {
     try{
         const {username} = req.body
-
-        // get user password to verify
+        /**
+         * get user password to verify
+         */
         db.query(`select otp from users where username='${username}';`, async (error, results)=>{
             if(error){
                 console.log("error in forgot_password_send_otp function at select:", error)
@@ -223,13 +275,18 @@ exports.forgot_password_send_otp = async (req, res) => {
             else if(results.rows.length == 0){
                 return res.status(401).send({status: 404, msg: "User not found, Please register!!"})
             }else{
-                // Generate otp
+                /**
+                 * Generate otp
+                 */
                 let otp = Math.floor(1000 + Math.random() * 9000)
-
-                // Send otp to mail
+                /**
+                 * Send otp to mail
+                 */
                 await email.send_otp(username, otp)
 
-                // Insert otp details into db
+                /**
+                 * Insert otp details into db
+                 */
                 db.query(`update users set otp='${otp}' where username='${username}';`, (error, results)=>{
                     if(error){
                         console.log("error in forgot_password_send_otp function at insert: ", error)
@@ -245,13 +302,20 @@ exports.forgot_password_send_otp = async (req, res) => {
     }
 }
 
-// Forgot password verify otp
+/**
+ * Validates users otp
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.forgot_password_verify_otp = async (req, res) => {
     try{
         const {username} = req.body
         const otp_received = req.body.otp
 
-        // get user password to verify
+        /**
+         * get user password to verify
+         */
         db.query(`select otp from users where username='${username}';`, async (error, results)=>{
             if(error){
                 console.log("error in forgot_password_verify_otp function at select:", error)
@@ -273,14 +337,20 @@ exports.forgot_password_verify_otp = async (req, res) => {
     }
 }
 
-// reset password
+/**
+ * update user password in the database
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.reset_password = async (req, res) => {
     try{
         const {username, password} = req.body
 
         let hashedPassword = await bcrypt.hash(password, 8)
-
-        // update password in db
+        /**
+         * update password in db
+         */
         db.query(`update users set password='${hashedPassword}' where username='${username}';`, async (error, results)=>{
             if(error){
                 console.log("error in reset_password function at select:", error)
@@ -296,7 +366,12 @@ exports.reset_password = async (req, res) => {
     }
 }
 
-// settings
+/**
+ * Update user settings
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.settings = (req, res) => {
     try{
         let {room_names, location, timezone_location, name} = req.userdetails
@@ -329,7 +404,9 @@ exports.settings = (req, res) => {
             update_users = 1
             name = req.body.name
         }
-
+        /**
+         * Update database details
+         */
         if(update_users == 1){
             if(update_timezone == 1){
                 let api = process.env.ABSTRACT_TIMEZONE_API_3
@@ -380,7 +457,12 @@ exports.settings = (req, res) => {
     }
 }
 
-// device control on/off
+/**
+ * control devices light and curtain
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.deviceControl = (req, res) => {
     try{
         const user_details = req.userdetails
@@ -392,7 +474,9 @@ exports.deviceControl = (req, res) => {
         if(req.body.username == null || req.body.room_name == null){
             return res.status(400).send({status: 400, msg:"Incorrect data recevied, Try again!"})
         }
-
+        /**
+         * Send trigger to IOT devices though MQTT Topics
+         */
         if((req.body.light_on || req.body.light_on==0) && (req.body.light_on != light_on)){
             update_db = 1
             light_on = req.body.light_on
@@ -406,6 +490,9 @@ exports.deviceControl = (req, res) => {
             data = {"curtain-open": curtain_on, room_name, username}
             iotController.publish_to_iot(topic, data)
         }
+        /**
+         * Update database details
+         */
         if(update_db == 1){
             db.query(`update rooms set light_on='${light_on}', curtain_on='${curtain_on}' where username='${username}' and room_name='${room_name}'`, (error, results)=>{
                 if(error){
@@ -423,11 +510,15 @@ exports.deviceControl = (req, res) => {
     }
 }
 
-// update thermostat
+/**
+ * control thermostat temperature, heat and cold
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.updateThermostat = (req, res) => {
     try{
         console.log("In updateThermostat")
-        // console.log(req.userdetails)
         const user_details = req.userdetails
         let {thermostat_temp,username,heat,cold, room_name} = user_details.room_details
 
@@ -456,7 +547,10 @@ exports.updateThermostat = (req, res) => {
                 heat = 0
             }
         }
-
+        /**
+         * Send trigger to IOT devices though MQTT Topics
+         * And update database details
+         */
         if(update_db == 1){
             data = {username,room_name,"temperature":thermostat_temp, heat, cold}
             iotController.publish_to_iot(topic, data)
@@ -476,28 +570,32 @@ exports.updateThermostat = (req, res) => {
     }
 }
 
-// When alram time is up
+/**
+ * Turn the alarm on
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.alarmTrigger = async (req, res) => {
     try{
         console.log("Alarm Trigger")
         const user_details = req.userdetails
-        // console.log(user_details)
         let {thermostat_temp, preferred_temp, alarm_time_weekday, alarm_time_weekend, username, light_on, curtain_on, heat, cold, room_name} = user_details.room_details
         let {location,name} = user_details
         let climate=""
         let topic = ""
         let data = {}
 
-        // for tests
         if(req.body.location){
             location = req.body.location
         }
 
-        // if climate is in request(for tests)
-        // check if it is sunny or cloudy
+        /**
+         * if climate is in request(for tests)
+         * check if it is sunny or cloudy by getting weather data from external weather API
+         */
         const api_key = process.env.WEATHER_API_ACCESS_KEY
         const api = "https://api.openweathermap.org/data/2.5/weather?q=" + location + "&APPID=" + api_key
-        // console.log(api)
         https.get(api, (response) => {
             if(response.statusCode != 200){
                 console.log("response statusCode " + response.statusCode + " is received, for weather data in alarmTrigger func!")
@@ -511,16 +609,14 @@ exports.alarmTrigger = async (req, res) => {
                 const data_json = JSON.parse(data)
                 const weather_data = data_json.weather[0]
                 const temp_data = data_json.main
-                
-                // convert temp from kelvin to celcius Celsius = (Kelvin – 273.15)
+                /**
+                 * convert temp from kelvin to celcius Celsius = (Kelvin – 273.15)
+                 */
                 const temperature = parseInt(temp_data.temp - 273.15)
                 const feels_like = parseInt(temp_data.feels_like - 273.15)
                 const weather_details = {climate: weather_data.main, description: weather_data.description, place: data_json.name, country: data_json.sys.country, temperature, feels_like, unit: "celsius"}
                 let current_climate = weather_details.climate
                 climate = current_climate
-
-                // console.log("climate:", climate)
-
                 if(climate.toLocaleLowerCase().includes("cloud") || climate.toLocaleLowerCase().includes("mist") || climate.toLocaleLowerCase().includes("fog")){
                     console.log(">> It's Cloudy!")
                     console.log("Light-on , Curtian-Close, Increase Temperature!")
@@ -534,8 +630,9 @@ exports.alarmTrigger = async (req, res) => {
                     light_on = 0
                     thermostat_temp = preferred_temp
                 }
-
-                // Trigger to IOT devices
+                /**
+                 * Trigger to IOT devices though MQTT Topics
+                 */
                 topic = "trigger/curtain_open"
                 data = {"curtain-open": curtain_on, room_name, username}
                 iotController.publish_to_iot(topic, data)
@@ -547,10 +644,9 @@ exports.alarmTrigger = async (req, res) => {
                 topic = "trigger/thermostat_update"
                 data = {"temperature": thermostat_temp, "heat": heat, "cold": cold, room_name, username}
                 iotController.publish_to_iot(topic, data)
-                
-                // console.log("On alarm")
-
-                // Update details in DB
+                /**
+                 * Update details in Database
+                 */
                 db.query(`update rooms set light_on='${light_on}', curtain_on='${curtain_on}', thermostat_temp='${thermostat_temp}' where username='${user_details.username}' and room_name='${room_name}'`, (error, results)=>{
                     if(error){
                         console.log("error in alarmTrigger function at update: ", error)
@@ -562,6 +658,9 @@ exports.alarmTrigger = async (req, res) => {
                         console.log("DB updated successfully!")
                     }
                 })
+                /**
+                 * If the trigger is from the server, return the statusCode
+                 */
                 if(req.no_return == true){
                     console.log("Alarm trigger done!")
                     return 200
@@ -578,15 +677,21 @@ exports.alarmTrigger = async (req, res) => {
     }
 }
 
-// Off the alarm
+/**
+ * Turn off the alarm
+ * @param {*} req Accepts request details
+ * @param {*} res Sends response body and status
+ * @returns returns the response data
+ */
 exports.alarmTriggerOff = (req, res) => {
     try{
         const user_details = req.userdetails
-        // console.log(user_details)
         let {thermostat_temp, preferred_temp, username, light_on, heat, cold, room_name} = user_details.room_details
         let topic, data = {}
         light_on = 0, thermostat_temp = preferred_temp
-
+        /**
+         * Send triggers to IOT devices though MQTT Topics
+         */
         topic = "trigger/light_on"
         data = {"light-on": light_on, room_name, username}
         iotController.publish_to_iot(topic, data)
@@ -594,8 +699,9 @@ exports.alarmTriggerOff = (req, res) => {
         topic = "trigger/thermostat_update"
         data = {"temperature": thermostat_temp, "heat": heat, "cold": cold, room_name, username}
         iotController.publish_to_iot(topic, data)
-
-        // Update details in DB
+        /**
+         * Update details in DB
+         */
         db.query(`update rooms set light_on='${light_on}', thermostat_temp='${thermostat_temp}' where username='${username}' and room_name='${room_name}'`, (error, results)=>{
             if(error){
                 console.log("error in alarmTriggerOff function at update: ", error)
