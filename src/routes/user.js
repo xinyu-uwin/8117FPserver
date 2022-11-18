@@ -1,13 +1,39 @@
 /**
  * @author Naveen
  */
+
+/**
+ * import express library
+ */
 const express = require('express')
+/**
+ * import methods from user path
+ */
 const userController = require('../controllers/user')
+/**
+ * import methods from weather path
+ */
 const weatherController = require('../controllers/weather')
+/**
+ * import middelware function
+ */
 const middleware = require('../middleware/userDetails')
+/**
+ * import database connection function
+ */
 const db = require('../database/connection.js')
+/**
+ * import cron library
+ */
 const cron = require('node-cron')
+/**
+ * import automation functions from automation file
+ */
+
 const automateControl = require('../controllers/automation.js')
+/**
+ * import axios library
+ */
 const axios = require('axios');
 
 db.connect()
@@ -23,6 +49,9 @@ db.connect()
 //     automateControl.automateAlarmTrigger()
 // })
 
+/**
+ * initialize router
+ */
 const router = express.Router()
 
 /**
@@ -44,4 +73,7 @@ router.post('/user/request/otp', userController.forgot_password_send_otp)
 router.post('/user/verify/otp', userController.forgot_password_verify_otp)
 router.post('/user/reset/password', userController.reset_password)
 
+/**
+ * export router data
+ */
 module.exports = router;
