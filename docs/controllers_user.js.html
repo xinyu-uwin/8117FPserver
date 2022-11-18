@@ -1,4 +1,32 @@
-/**
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: controllers/user.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: controllers/user.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
  * @author Naveen
  */
 
@@ -43,7 +71,7 @@ exports.register = (req, res) => {
              * Send request to 'abstract' external API
              * to get timezone based on location
              */
-            axios.get('https://timezone.abstractapi.com/v1/current_time/?api_key='+api+'&location='+location)
+            axios.get('https://timezone.abstractapi.com/v1/current_time/?api_key='+api+'&amp;location='+location)
             .then(response => {
                 let {timezone_location} = response.data
                 /**
@@ -387,20 +415,20 @@ exports.settings = (req, res) => {
             update_room_name = 1
             room_name = new_room_name
         }
-        if((req.body.preferred_temp || req.body.preferred_temp==0) && (req.body.preferred_temp != preferred_temp)){
+        if((req.body.preferred_temp || req.body.preferred_temp==0) &amp;&amp; (req.body.preferred_temp != preferred_temp)){
             update_rooms = 1
             preferred_temp = req.body.preferred_temp
-        }if(req.body.location && req.body.location != location){
+        }if(req.body.location &amp;&amp; req.body.location != location){
             update_users = 1
             update_timezone = 1
             location = req.body.location
-        }if(req.body.alarm_time_weekday && req.body.alarm_time_weekday != alarm_time_weekday){
+        }if(req.body.alarm_time_weekday &amp;&amp; req.body.alarm_time_weekday != alarm_time_weekday){
             update_rooms = 1
             alarm_time_weekday = req.body.alarm_time_weekday
-        }if(req.body.alarm_time_weekend && req.body.alarm_time_weekend != alarm_time_weekend){
+        }if(req.body.alarm_time_weekend &amp;&amp; req.body.alarm_time_weekend != alarm_time_weekend){
             update_rooms = 1
             alarm_time_weekend = req.body.alarm_time_weekend
-        }if(req.body.name && req.body.name != name){
+        }if(req.body.name &amp;&amp; req.body.name != name){
             update_users = 1
             name = req.body.name
         }
@@ -410,7 +438,7 @@ exports.settings = (req, res) => {
         if(update_users == 1){
             if(update_timezone == 1){
                 let api = process.env.ABSTRACT_TIMEZONE_API_3
-                axios.get('https://timezone.abstractapi.com/v1/current_time/?api_key='+api+'&location='+location)
+                axios.get('https://timezone.abstractapi.com/v1/current_time/?api_key='+api+'&amp;location='+location)
                 .then(response => {
                     timezone_location = response.data.timezone_location
                     db.query(`update users set location='${location}', timezone_location='${timezone_location}',name='${name}' where username='${username}';`, (error, results)=>{
@@ -477,13 +505,13 @@ exports.deviceControl = (req, res) => {
         /**
          * Send trigger to IOT devices though MQTT Topics
          */
-        if((req.body.light_on || req.body.light_on==0) && (req.body.light_on != light_on)){
+        if((req.body.light_on || req.body.light_on==0) &amp;&amp; (req.body.light_on != light_on)){
             update_db = 1
             light_on = req.body.light_on
             topic = "trigger/light_on"
             data = {"light-on": light_on, room_name, username}
             iotController.publish_to_iot(topic, data)
-        }if((req.body.curtain_on || req.body.curtain_on==0) && (req.body.curtain_on != curtain_on)){
+        }if((req.body.curtain_on || req.body.curtain_on==0) &amp;&amp; (req.body.curtain_on != curtain_on)){
             update_db = 1
             curtain_on = req.body.curtain_on
             topic = "trigger/curtain_open"
@@ -529,18 +557,18 @@ exports.updateThermostat = (req, res) => {
         let update_db = 0
 
         topic = "trigger/thermostat_update"
-        if((req.body.temperature || req.body.temperature == 0) && (req.body.temperature != thermostat_temp)){
+        if((req.body.temperature || req.body.temperature == 0) &amp;&amp; (req.body.temperature != thermostat_temp)){
             update_db = 1
             thermostat_temp = req.body.temperature
         }
-        if((req.body.heat || req.body.heat==0) && (req.body.heat != heat)){
+        if((req.body.heat || req.body.heat==0) &amp;&amp; (req.body.heat != heat)){
             update_db = 1
             heat = req.body.heat
             if(heat == 1){
                 cold = 0
             }
         }
-        if((req.body.cold || req.body.cold==0) && (req.body.cold != cold)){
+        if((req.body.cold || req.body.cold==0) &amp;&amp; (req.body.cold != cold)){
             update_db = 1
             cold = req.body.cold
             if(cold == 1){
@@ -595,7 +623,7 @@ exports.alarmTrigger = async (req, res) => {
          * check if it is sunny or cloudy by getting weather data from external weather API
          */
         const api_key = process.env.WEATHER_API_ACCESS_KEY
-        const api = "https://api.openweathermap.org/data/2.5/weather?q=" + location + "&APPID=" + api_key
+        const api = "https://api.openweathermap.org/data/2.5/weather?q=" + location + "&amp;APPID=" + api_key
         https.get(api, (response) => {
             if(response.statusCode != 200){
                 console.log("response statusCode " + response.statusCode + " is received, for weather data in alarmTrigger func!")
@@ -714,4 +742,26 @@ exports.alarmTriggerOff = (req, res) => {
     }catch(e){
         console.log("Error in alarmTriggerOff():", e)
     }
-}
+}</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#addRoom">addRoom</a></li><li><a href="global.html#alarmTrigger">alarmTrigger</a></li><li><a href="global.html#alarmTriggerOff">alarmTriggerOff</a></li><li><a href="global.html#automateAlarmTrigger">automateAlarmTrigger</a></li><li><a href="global.html#automateControl">automateControl</a></li><li><a href="global.html#automateThermostat">automateThermostat</a></li><li><a href="global.html#axios">axios</a></li><li><a href="global.html#bcrypt">bcrypt</a></li><li><a href="global.html#client">client</a></li><li><a href="global.html#cron">cron</a></li><li><a href="global.html#db">db</a></li><li><a href="global.html#details">details</a></li><li><a href="global.html#deviceControl">deviceControl</a></li><li><a href="global.html#express">express</a></li><li><a href="global.html#forgot_password_send_otp">forgot_password_send_otp</a></li><li><a href="global.html#forgot_password_verify_otp">forgot_password_verify_otp</a></li><li><a href="global.html#https">https</a></li><li><a href="global.html#login">login</a></li><li><a href="global.html#logout">logout</a></li><li><a href="global.html#middleware">middleware</a></li><li><a href="global.html#nodemailer">nodemailer</a></li><li><a href="global.html#register">register</a></li><li><a href="global.html#removeRoom">removeRoom</a></li><li><a href="global.html#reset_password">reset_password</a></li><li><a href="global.html#router">router</a></li><li><a href="global.html#send_otp">send_otp</a></li><li><a href="global.html#settings">settings</a></li><li><a href="global.html#transporter">transporter</a></li><li><a href="global.html#updateThermostat">updateThermostat</a></li><li><a href="global.html#userController">userController</a></li><li><a href="global.html#userdetails">userdetails</a></li><li><a href="global.html#weatherController">weatherController</a></li><li><a href="global.html#weatherdata">weatherdata</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.0</a> on Thu Nov 17 2022 19:15:46 GMT-0500 (Eastern Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

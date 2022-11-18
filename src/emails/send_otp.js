@@ -1,5 +1,16 @@
+\/**
+ * @author Naveen
+ */
+
+/**
+ * import nodemailer library
+ */
 const nodemailer = require('nodemailer')
 
+/**
+ * 
+ * @returns nodemailer
+ */
 function transporter() {
     return nodemailer.createTransport({
         service: 'gmail',
@@ -11,6 +22,11 @@ function transporter() {
     })
 }
 
+/**
+ * Send otp to user email
+ * @param {*} email email address
+ * @param {*} otp value to send
+ */
 exports.send_otp = async function (email, otp) {
     const transporterObject = transporter()
     transporterObject.sendMail({
