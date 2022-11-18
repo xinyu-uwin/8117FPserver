@@ -2,6 +2,9 @@
  * @author Naveen
  */
 
+/**
+ * database connection variable
+ */
 const db = require('../database/connection.js')
 
 /**
