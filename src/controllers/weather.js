@@ -3,9 +3,10 @@
  */
 
 /**
- * import
+ * imports
  */
 const https = require('https')
+const logger = require('../logger.js')
 
 /**
  * Get weather details from 'openweathermap' API
@@ -48,7 +49,7 @@ exports.weatherdata = (req, res) => {
             })
         })
     } catch (e) {
-        console.log("error:", e)
+        logger.logExceptions(e, req.body, "weatherdata()")
         return res.status(400).send({status: 400, msg: "error encountered!" })
     }
 }
