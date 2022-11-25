@@ -6,6 +6,7 @@
  * database connection variable
  */
 const db = require('../database/connection.js')
+const logger = require('../logger.js')
 
 /**
  * A middleware that gets called to verify a user
@@ -29,8 +30,8 @@ exports.details = async (req, res, next) => {
          */
         db.query(`select name,location from users where username='${username}';`, async (error, results)=>{
             if(error){
-                console.log("error in middleware details function at select:", error)
-                return res.status(400).send({msg:"Incorrectt data provided!"})
+                logger.logExceptions(error, req.body, "details() select query-1")
+                return res.status(400).send({msg:"Incorrect data provided!"})
             }
             else if(results.rows.length == 0){
                 return res.status(401).send({status:404, msg: "User not Found, Try registering!!"})
@@ -38,7 +39,7 @@ exports.details = async (req, res, next) => {
             let {name, location} = results.rows[0]
             db.query(`select * from rooms where username='${username}';`, async (error, result)=>{
                 if(error){
-                    console.log("error in middleware details function at select:", error)
+                    logger.logExceptions(error, req.body, "details() select query-2")
                     return res.status(400).send({msg:"Incorrect data provided!"})
                 }
                 let room_list = result.rows
@@ -66,7 +67,7 @@ exports.details = async (req, res, next) => {
         })
     }
     catch(e){
-        console.log("Error is : ", e)
+        logger.logExceptions(e, req.body, "details() middleware function")
         return res.status(401).send({ msg: 'Please authenticate.' })
     }
 }
