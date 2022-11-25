@@ -1,16 +1,16 @@
 {
-    "source": {
-      "include": ["src","app.js"],
-      "includePattern": ".js$",
-      "excludePattern": "(node_modules/|docs)"
-    },
-    "plugins": ["plugins/markdown"],
-    "templates": {
-      "cleverLinks": true,
-      "monospaceLinks": true
-    },
-    "opts": {
-      "recurse": true,
-      "destination": "./docs/"
-    }
+  "source": {
+    "include": ["src","app.js"],
+    "includePattern": ".js$",
+    "excludePattern": "(node_modules/|docs|server_code_docs)"
+  },
+  "plugins": ["plugins/markdown"],
+  "templates": {
+    "cleverLinks": true,
+    "monospaceLinks": true
+  },
+  "opts": {
+    "recurse": true,
+    "destination": "./server_code_docs/"
   }
+}
