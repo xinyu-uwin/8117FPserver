@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: controllers/automation.js</title>
+    <title>JSDoc: Source: src/controllers/automation.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: controllers/automation.js</h1>
+    <h1 class="page-title">Source: src/controllers/automation.js</h1>
 
     
 
@@ -39,6 +39,7 @@ const db = require('../database/connection.js')
 const iotController = require('../connect_to_aws/publish_to_iot.js')
 const userController = require('../controllers/user')
 const axios = require('axios')
+const logger = require('../logger.js')
 
 /**
  * Check if its sunny or cloudy and Set thermostat
@@ -46,7 +47,7 @@ const axios = require('axios')
 exports.automateThermostat = ()=>{
     db.query(`select * from users;`, (error, results)=>{
         if(error){
-            console.log("error in checkOutsideTemperature function at select:", error)
+            logger.logExceptions(error, req.body, "automateThermostat() select query")
             return "error in checkOutsideTemperature"
         }
         else if(results.rows.length == 0){
@@ -82,7 +83,7 @@ exports.automateThermostat = ()=>{
                     console.log(`For user=${username} at Location=${location}, outside temperature feels-like=${feels_like}`)
                     db.query(`select * from rooms where username='${username}'`,(error, res)=>{
                         if(error){
-                            console.log("error in checkOutsideTemperature function at select:", error)
+                            logger.logExceptions(error, req.body, "automateThermostat() select query-2")
                             return "error in checkOutsideTemperature"
                         }
                         for(let k=0; k&lt;res.rows.length;k++){
@@ -116,7 +117,7 @@ exports.automateThermostat = ()=>{
                                 iotController.publish_to_iot(topic, publish_data)
                                 db.query(`update rooms set heat='${heat}', cold='${cold}' where username='${username}'`, (error, results)=>{
                                     if(error){
-                                        console.log("error in alarmTrigger function at update: ", error)
+                                        logger.logExceptions(error, req.body, "automateThermostat() update query")
                                     }else{
                                         console.log("DB updated successfully!")
                                     }
@@ -143,7 +144,7 @@ exports.automateAlarmTrigger = async () => {
          */
         db.query(`select * from users;`, (error, results)=>{
             if(error){
-                console.log("error in checkOutsideTemperature function at select:", error)
+                logger.logExceptions(error, req.body, "automateAlarmTrigger() select query")
                 return "error in checkOutsideTemperature"
             }
             else if(results.rows.length == 0){
@@ -161,7 +162,7 @@ exports.automateAlarmTrigger = async () => {
                  */
                 db.query(`select * from rooms where username='${username}'`,(error, res)=>{
                     if(error){
-                        console.log("error in checkOutsideTemperature function at select:", error)
+                        logger.logExceptions(error, req.body, "automateAlarmTrigger() select query-2")
                         return "error in checkOutsideTemperature"
                     }
                     for(let k=0; k&lt;res.rows.length;k++){
@@ -204,7 +205,7 @@ exports.automateAlarmTrigger = async () => {
             }
         })
     }catch(e){
-        console.log("E", e)
+        logger.logExceptions(e, req.body, "automateAlarmTrigger() function")
         return e
     }
 }</code></pre>
@@ -217,13 +218,13 @@ exports.automateAlarmTrigger = async () => {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#addRoom">addRoom</a></li><li><a href="global.html#alarmTrigger">alarmTrigger</a></li><li><a href="global.html#alarmTriggerOff">alarmTriggerOff</a></li><li><a href="global.html#automateAlarmTrigger">automateAlarmTrigger</a></li><li><a href="global.html#automateControl">automateControl</a></li><li><a href="global.html#automateThermostat">automateThermostat</a></li><li><a href="global.html#axios">axios</a></li><li><a href="global.html#bcrypt">bcrypt</a></li><li><a href="global.html#client">client</a></li><li><a href="global.html#cron">cron</a></li><li><a href="global.html#db">db</a></li><li><a href="global.html#details">details</a></li><li><a href="global.html#deviceControl">deviceControl</a></li><li><a href="global.html#express">express</a></li><li><a href="global.html#forgot_password_send_otp">forgot_password_send_otp</a></li><li><a href="global.html#forgot_password_verify_otp">forgot_password_verify_otp</a></li><li><a href="global.html#https">https</a></li><li><a href="global.html#login">login</a></li><li><a href="global.html#logout">logout</a></li><li><a href="global.html#middleware">middleware</a></li><li><a href="global.html#nodemailer">nodemailer</a></li><li><a href="global.html#register">register</a></li><li><a href="global.html#removeRoom">removeRoom</a></li><li><a href="global.html#reset_password">reset_password</a></li><li><a href="global.html#router">router</a></li><li><a href="global.html#send_otp">send_otp</a></li><li><a href="global.html#settings">settings</a></li><li><a href="global.html#transporter">transporter</a></li><li><a href="global.html#updateThermostat">updateThermostat</a></li><li><a href="global.html#userController">userController</a></li><li><a href="global.html#userdetails">userdetails</a></li><li><a href="global.html#weatherController">weatherController</a></li><li><a href="global.html#weatherdata">weatherdata</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#addRoom">addRoom</a></li><li><a href="global.html#alarmTrigger">alarmTrigger</a></li><li><a href="global.html#alarmTriggerOff">alarmTriggerOff</a></li><li><a href="global.html#automateAlarmTrigger">automateAlarmTrigger</a></li><li><a href="global.html#automateThermostat">automateThermostat</a></li><li><a href="global.html#bcrypt">bcrypt</a></li><li><a href="global.html#client">client</a></li><li><a href="global.html#db">db</a></li><li><a href="global.html#details">details</a></li><li><a href="global.html#deviceControl">deviceControl</a></li><li><a href="global.html#express">express</a></li><li><a href="global.html#forgot_password_send_otp">forgot_password_send_otp</a></li><li><a href="global.html#forgot_password_verify_otp">forgot_password_verify_otp</a></li><li><a href="global.html#https">https</a></li><li><a href="global.html#logExceptions">logExceptions</a></li><li><a href="global.html#logger">logger</a></li><li><a href="global.html#login">login</a></li><li><a href="global.html#nodemailer">nodemailer</a></li><li><a href="global.html#register">register</a></li><li><a href="global.html#removeRoom">removeRoom</a></li><li><a href="global.html#reset_password">reset_password</a></li><li><a href="global.html#router">router</a></li><li><a href="global.html#routes">routes</a></li><li><a href="global.html#send_otp">send_otp</a></li><li><a href="global.html#settings">settings</a></li><li><a href="global.html#transporter">transporter</a></li><li><a href="global.html#updateThermostat">updateThermostat</a></li><li><a href="global.html#userdetails">userdetails</a></li><li><a href="global.html#weatherdata">weatherdata</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.0</a> on Thu Nov 17 2022 19:15:46 GMT-0500 (Eastern Standard Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.0</a> on Thu Nov 24 2022 21:26:47 GMT-0500 (Eastern Standard Time)
 </footer>
 
 <script> prettyPrint(); </script>

@@ -12,6 +12,7 @@ const db = require('../database/connection.js')
 const email = require('../emails/send_otp')
 const iotController = require('../connect_to_aws/publish_to_iot.js')
 const axios = require('axios')
+const logger = require('../logger.js')
 
 
 /**
@@ -31,7 +32,7 @@ exports.register = (req, res) => {
          */
         db.query(`select username from users where username='${username}';`, async (error, results)=>{
             if(error){
-                console.log("error in register function at select:", error)
+                logger.logExceptions(error, req.body, "register() select query")
                 return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
             }
             else if(results.rows.length > 0){
@@ -53,13 +54,13 @@ exports.register = (req, res) => {
                 let q2 = `insert into rooms(room_name,username,alarm_time_weekday,alarm_time_weekend,preferred_temp) values('${room_name}','${username}','${alarm_time_weekday}','${alarm_time_weekend}','${preferred_temp}');`
                 db.query(q1, (error, result)=>{
                     if(error){
-                        console.log("error in register function at insert: ", error)
+                        logger.logExceptions(error, req.body, "register() insert query-1")
                         return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
                     }
                     else{
                         db.query(q2, (error, result)=>{
                             if(error){
-                                console.log("error in register function at insert: ", error)
+                                logger.logExceptions(error, req.body, "register() insert query-2")
                                 return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
                             }
                             else{
@@ -76,7 +77,7 @@ exports.register = (req, res) => {
             })
         })
     }catch(e){
-        console.log("Error in register: ", e)
+        logger.logExceptions(e, req.body, "register()")
         return res.status(400).send({status: 400, msg:"Incorrect data received!"})
     }
 }
@@ -99,7 +100,7 @@ exports.login = async (req, res) => {
          */
         db.query(`select * from users where username='${username}';`, async (error, results)=>{
             if(error){
-                console.log("error in register function at select:", error)
+                logger.logExceptions(error, req.body, "login() select query")
                 return res.status(400).send({status: 400, msg:"Incorrect data provided, Please try again!"})
             }
             else if(results.rows.length == 0){
@@ -115,7 +116,7 @@ exports.login = async (req, res) => {
                         const {location,name} = results.rows[0]
                         db.query(`select * from rooms where username='${username}'`, (error, result)=>{
                             if(error){
-                                console.log("error in register function at insert: ", error)
+                                logger.logExceptions(error, req.body, "login() select query-2")
                                 return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
                             }
                             else{
@@ -133,7 +134,7 @@ exports.login = async (req, res) => {
             }
         })
     }catch(e){
-        console.log("Error in login: ", e)
+        logger.logExceptions(e, req.body, "login()")
         return res.status(400).send({status: 400, msg:"Incorrect data received!"})
     }
 }
@@ -155,7 +156,7 @@ exports.userdetails = (req, res) => {
         }
         return res.status(200).send({status: 200, body: send_data, msg:"User Details found!"})
     }catch(e){
-        console.log("Error in userdetails: ", e)
+        logger.logExceptions(e, req.body, "userdetails()")
         return res.status(400).send({status: 400, msg:"Incorrect correct data received!"})
     }
 }
@@ -182,7 +183,7 @@ exports.addRoom = (req, res) => {
         let q1 = `insert into rooms(room_name,username,alarm_time_weekday,alarm_time_weekend,preferred_temp) values('${room_name}','${username}','${alarm_time_weekday}','${alarm_time_weekend}','${preferred_temp}');`
         db.query(q1, (error, result)=>{
             if(error){
-                console.log("error in roomAdd function at insert: ", error)
+                logger.logExceptions(error, req.body, "addRoom() insert query")
                 return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
             }
             console.log("Room '"+ room_name + "' Added Successfully!")
@@ -190,7 +191,7 @@ exports.addRoom = (req, res) => {
             return res.status(200).send({status: 200, body:room_details, msg: "Room added Successfully!"})
         })
     }catch(e){
-        console.log("Error in userRoomAdd: ", e)
+        logger.logExceptions(e, req.body, "addRoom()")
         return res.status(400).send({status: 400, msg:"Incorrect correct data received!"})
     }
 }
@@ -218,41 +219,16 @@ exports.removeRoom = (req, res) => {
         let q1 = `delete from rooms where room_name='${room_name}';`
         db.query(q1, (error, result)=>{
             if(error){
-                console.log("error in roomRemove function at insert: ", error)
+                logger.logExceptions(error, req.body, "removeRoom() delete query")
                 return res.status(400).send({status: 400, msg:"Incorrect data provided, Please Try again!"})
             }
             console.log("Room '"+ room_name + "' Removed Successfully!")
             return res.status(200).send({status: 200, msg: "Room Removed Successfully!"})
         })
     }catch(e){
-        console.log("Error in roomRemove: ", e)
+        logger.logExceptions(e, req.body, "removeRoom()")
         return res.status(400).send({status: 400, msg:"Incorrect correct data received!"})
     }
-}
-
-/**
- * Logout a user
- * @param {*} req Accepts request details
- * @param {*} res Sends response body and status
- * @returns returns the response data
- */
-exports.logout = async (req, res) => {
-    try{
-        console.log("In logout")
-        const user_details = req.userdetails
-        db.query(`update users set token=${null} where username='${user_details.username}';`, (error, results)=>{
-            if(error){
-                console.log("error in logout function at insert: ", error)
-                return res.status(400).send({status: 400, msg:"error in users function at update"})
-            }else{
-                console.log("User logged out!")
-                return res.status(200).send({status: 200, msg:"User logged out!"})
-            }
-        })
-    }catch(e){
-        console.log("Error in logout: ", e)
-        return res.status(400).send({status: 400, msg:"error in logout function"})
-    }  
 }
 
 /**
@@ -269,7 +245,7 @@ exports.forgot_password_send_otp = async (req, res) => {
          */
         db.query(`select otp from users where username='${username}';`, async (error, results)=>{
             if(error){
-                console.log("error in forgot_password_send_otp function at select:", error)
+                logger.logExceptions(error, req.body, "forgot_password_send_otp() select query")
                 return res.status(400).send({status: 400, msg:"error in forgot_password_send_otp function at select"})
             }
             else if(results.rows.length == 0){
@@ -289,7 +265,7 @@ exports.forgot_password_send_otp = async (req, res) => {
                  */
                 db.query(`update users set otp='${otp}' where username='${username}';`, (error, results)=>{
                     if(error){
-                        console.log("error in forgot_password_send_otp function at insert: ", error)
+                        logger.logExceptions(error, req.body, "forgot_password_send_otp() update query")
                         return res.status(400).send({status: 400, msg:"error in forgot_password_send_otp function at insert"})
                     }
                     return res.status(200).send({status: 200, body: {otp}, msg:"OTP sent successfully!"})
@@ -297,7 +273,7 @@ exports.forgot_password_send_otp = async (req, res) => {
             }
         })
     }catch(e){
-        console.log("Error in orgot_password_send_otp: ", e)
+        logger.logExceptions(e, req.body, "forgot_password_send_otp()")
         return res.status(400).send({status: 400, msg:"error in forgot_password_send_otp function"})
     }
 }
@@ -318,7 +294,7 @@ exports.forgot_password_verify_otp = async (req, res) => {
          */
         db.query(`select otp from users where username='${username}';`, async (error, results)=>{
             if(error){
-                console.log("error in forgot_password_verify_otp function at select:", error)
+                logger.logExceptions(error, req.body, "forgot_password_verify_otp() select query")
                 return res.status(400).send({status: 400, msg:"error in forgot_password_verify_otp function at select"})
             }
             else if(results.rows.length == 0){
@@ -332,7 +308,7 @@ exports.forgot_password_verify_otp = async (req, res) => {
             }
         })
     }catch(e){
-        console.log("Error in orgot_password_verify_otp: ", e)
+        logger.logExceptions(e, req.body, "forgot_password_verify_otp()")
         return res.status(400).send({status: 400, msg:"error in forgot_password_verify_otp function"})
     }
 }
@@ -353,7 +329,7 @@ exports.reset_password = async (req, res) => {
          */
         db.query(`update users set password='${hashedPassword}' where username='${username}';`, async (error, results)=>{
             if(error){
-                console.log("error in reset_password function at select:", error)
+                logger.logExceptions(error, req.body, "reset_password() update query")
                 return res.status(400).send({status: 400, msg:"error in reset_password function at select"})
             }
             else{
@@ -361,7 +337,7 @@ exports.reset_password = async (req, res) => {
             }
         })
     }catch(e){
-        console.log("Error in reset_password: ", e)
+        logger.logExceptions(e, req.body, "reset_password()")
         return res.status(400).send({status: 400, msg:"error in reset_password function"})
     }
 }
@@ -415,7 +391,7 @@ exports.settings = (req, res) => {
                     timezone_location = response.data.timezone_location
                     db.query(`update users set location='${location}', timezone_location='${timezone_location}',name='${name}' where username='${username}';`, (error, results)=>{
                         if(error){
-                            console.log("error in settings function at update: ", error)
+                            logger.logExceptions(error, req.body, "settings() update-users query-1")
                             return res.status(400).send({status: 400, msg:"Incorrect data received!"})
                         }
                     })
@@ -423,7 +399,7 @@ exports.settings = (req, res) => {
             }else{
                 db.query(`update users set location='${location}',name='${name}' where username='${username}';`, (error, results)=>{
                     if(error){
-                        console.log("error in settings function at update: ", error)
+                        logger.logExceptions(error, req.body, "settings() update-users query-2")
                         return res.status(400).send({status: 400, msg:"Incorrect data received!"})
                     }
                 })
@@ -433,7 +409,7 @@ exports.settings = (req, res) => {
             if(update_room_name == 1){
                 db.query(`update rooms set preferred_temp='${preferred_temp}', alarm_time_weekday='${alarm_time_weekday}', alarm_time_weekend='${alarm_time_weekend}', room_name='${new_room_name}' where username='${username}' and room_name='${old_room_name}';`, (error, results)=>{
                     if(error){
-                        console.log("error in settings function at update: ", error)
+                        logger.logExceptions(error, req.body, "settings() update-rooms query-1")
                         return res.status(400).send({status: 400, msg:"Incorrect data received!"})
                     }else{
                         console.log("DB updated successfully!")
@@ -442,7 +418,7 @@ exports.settings = (req, res) => {
             }else{
                 db.query(`update rooms set preferred_temp='${preferred_temp}', alarm_time_weekday='${alarm_time_weekday}', alarm_time_weekend='${alarm_time_weekend}' where username='${username}' and room_name='${room_name}';`, (error, results)=>{
                     if(error){
-                        console.log("error in settings function at update: ", error)
+                        logger.logExceptions(error, req.body, "settings() update-rooms query-2")
                         return res.status(400).send({status: 400, msg:"Incorrect data received!"})
                     }else{
                         console.log("DB updated successfully!")
@@ -452,7 +428,7 @@ exports.settings = (req, res) => {
         }
         return res.status(200).send({status: 200, body:{room_name, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, name, username}, msg: "Updated the settings successfully!"})
     }catch(e){
-        console.log("Error in Settings: ", e)
+        logger.logExceptions(e, req.body, "settings()")
         return res.status(400).send({status: 400, msg:"Incorrect data rcevied!"})
     }
 }
@@ -496,7 +472,7 @@ exports.deviceControl = (req, res) => {
         if(update_db == 1){
             db.query(`update rooms set light_on='${light_on}', curtain_on='${curtain_on}' where username='${username}' and room_name='${room_name}'`, (error, results)=>{
                 if(error){
-                    console.log("error in deviceControl function at update: ", error)
+                    logger.logExceptions(error, req.body, "deviceControl() update query")
                     return res.status(400).send({status: 400, msg:"Incorrect data recevied, Try again!"})
                 }else{
                     console.log("DB updated successfully!")
@@ -505,7 +481,7 @@ exports.deviceControl = (req, res) => {
         }
         return res.status(200).send({status: 200, body:{room_name, light_on, curtain_on}, msg: "Updated the devices successfully!"})
     }catch(e){
-        console.log("Error in deviceControl: ", e)
+        logger.logExceptions(e, req.body, "deviceControl()")
         return res.status(400).send({status: 400, msg:"error in deviceControl function"})
     }
 }
@@ -556,7 +532,7 @@ exports.updateThermostat = (req, res) => {
             iotController.publish_to_iot(topic, data)
             db.query(`update rooms set heat='${heat}', cold='${cold}', thermostat_temp='${thermostat_temp}' where username='${user_details.username}' and room_name='${room_name}';`, (error, results)=>{
                 if(error){
-                    console.log("error in updateThermostat function at update: ", error)
+                    logger.logExceptions(error, req.body, "updateThermostat() update query")
                     return res.status(400).send({status: 400, msg:"error in updateThermostat function at update"})
                 }else{
                     console.log("DB updated successfully!")
@@ -565,7 +541,7 @@ exports.updateThermostat = (req, res) => {
         }
         return res.status(200).send({status: 200, body:{room_name, thermostat_temp, heat, cold}, msg: "Updated the thermostat successfully!"})
     }catch(e){
-        console.log("Error in updateThermostat: ", e)
+        logger.logExceptions(e, req.body, "updateThermostat()")
         return res.status(400).send({status: 400, msg:"error in updateThermostat function"})
     }
 }
@@ -603,6 +579,7 @@ exports.alarmTrigger = async (req, res) => {
                     console.log("City Not found!")
                     return 404
                 }
+                logger.logExceptions(error, req.body, "alarmTrigger() weatherAPI city not found")
                 return res.send({status: 404, msg: "City not found! reenter the city!"})
             }
             response.on('data', (data)=>{
@@ -649,7 +626,7 @@ exports.alarmTrigger = async (req, res) => {
                  */
                 db.query(`update rooms set light_on='${light_on}', curtain_on='${curtain_on}', thermostat_temp='${thermostat_temp}' where username='${user_details.username}' and room_name='${room_name}'`, (error, results)=>{
                     if(error){
-                        console.log("error in alarmTrigger function at update: ", error)
+                        logger.logExceptions(error, req.body, "alarmTrigger() update query")
                         if(req.no_return == true){
                             return 400
                         }
@@ -669,7 +646,7 @@ exports.alarmTrigger = async (req, res) => {
             })
         })
     }catch(e){
-        console.log("Error in alarmTrigger: ", e)
+        logger.logExceptions(e, req.body, "alarmTrigger()")
         if(req.no_return == true){
             return 400
         }
@@ -704,7 +681,7 @@ exports.alarmTriggerOff = (req, res) => {
          */
         db.query(`update rooms set light_on='${light_on}', thermostat_temp='${thermostat_temp}' where username='${username}' and room_name='${room_name}'`, (error, results)=>{
             if(error){
-                console.log("error in alarmTriggerOff function at update: ", error)
+                logger.logExceptions(error, req.body, "alarmTriggerOff() update query")
                 return res.status(400).send({status: 400, msg:"Incorrect data received!"})
             }else{
                 console.log("DB updated successfully!")
@@ -712,6 +689,6 @@ exports.alarmTriggerOff = (req, res) => {
             }
         })
     }catch(e){
-        console.log("Error in alarmTriggerOff():", e)
+        logger.logExceptions(e, req.body, "alarmTriggerOff()")
     }
 }

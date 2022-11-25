@@ -11,6 +11,7 @@ const db = require('../database/connection.js')
 const iotController = require('../connect_to_aws/publish_to_iot.js')
 const userController = require('../controllers/user')
 const axios = require('axios')
+const logger = require('../logger.js')
 
 /**
  * Check if its sunny or cloudy and Set thermostat
@@ -18,7 +19,7 @@ const axios = require('axios')
 exports.automateThermostat = ()=>{
     db.query(`select * from users;`, (error, results)=>{
         if(error){
-            console.log("error in checkOutsideTemperature function at select:", error)
+            logger.logExceptions(error, req.body, "automateThermostat() select query")
             return "error in checkOutsideTemperature"
         }
         else if(results.rows.length == 0){
@@ -54,7 +55,7 @@ exports.automateThermostat = ()=>{
                     console.log(`For user=${username} at Location=${location}, outside temperature feels-like=${feels_like}`)
                     db.query(`select * from rooms where username='${username}'`,(error, res)=>{
                         if(error){
-                            console.log("error in checkOutsideTemperature function at select:", error)
+                            logger.logExceptions(error, req.body, "automateThermostat() select query-2")
                             return "error in checkOutsideTemperature"
                         }
                         for(let k=0; k<res.rows.length;k++){
@@ -88,7 +89,7 @@ exports.automateThermostat = ()=>{
                                 iotController.publish_to_iot(topic, publish_data)
                                 db.query(`update rooms set heat='${heat}', cold='${cold}' where username='${username}'`, (error, results)=>{
                                     if(error){
-                                        console.log("error in alarmTrigger function at update: ", error)
+                                        logger.logExceptions(error, req.body, "automateThermostat() update query")
                                     }else{
                                         console.log("DB updated successfully!")
                                     }
@@ -115,7 +116,7 @@ exports.automateAlarmTrigger = async () => {
          */
         db.query(`select * from users;`, (error, results)=>{
             if(error){
-                console.log("error in checkOutsideTemperature function at select:", error)
+                logger.logExceptions(error, req.body, "automateAlarmTrigger() select query")
                 return "error in checkOutsideTemperature"
             }
             else if(results.rows.length == 0){
@@ -133,7 +134,7 @@ exports.automateAlarmTrigger = async () => {
                  */
                 db.query(`select * from rooms where username='${username}'`,(error, res)=>{
                     if(error){
-                        console.log("error in checkOutsideTemperature function at select:", error)
+                        logger.logExceptions(error, req.body, "automateAlarmTrigger() select query-2")
                         return "error in checkOutsideTemperature"
                     }
                     for(let k=0; k<res.rows.length;k++){
@@ -176,7 +177,7 @@ exports.automateAlarmTrigger = async () => {
             }
         })
     }catch(e){
-        console.log("E", e)
+        logger.logExceptions(e, req.body, "automateAlarmTrigger() function")
         return e
     }
 }
