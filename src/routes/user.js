@@ -27,13 +27,13 @@ db.connect()
 /**
  * Cron Job
  */
-cron.schedule("*/30 * * * * *", function() {
-    let check_date = new Date()
-    console.log("--> Auto-Thermostat Check at ", check_date)
-    automateControl.automateThermostat()
+// cron.schedule("*/30 * * * * *", function() {
+//     let check_date = new Date()
+//     console.log("--> Auto-Thermostat Check at ", check_date)
+//     automateControl.automateThermostat()
 
-    automateControl.automateAlarmTrigger()
-})
+//     automateControl.automateAlarmTrigger()
+// })
 
 /**
  * initialize router
