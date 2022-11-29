@@ -647,7 +647,7 @@ exports.alarmTrigger = async (req, res) => {
             })
         })
     }else{
-        return res.status(200).send({status: 200})
+        return res.status(200).send({status: 200,body:{room_name,thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, name, username, light_on, curtain_on}, msg:"weather"})
     }
     }catch(e){
         logger.logExceptions(e, req.body, "alarmTrigger()")
