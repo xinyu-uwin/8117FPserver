@@ -22,9 +22,13 @@ const logger = createLogger({
  * Formatting the Exception messages to log them.
  */
 const logExceptions = (error, reqBody, errInFunction)=>{
-    if(typeof reqBody == "object") reqBody = JSON.stringify(reqBody)
-    logMsg = "errorInFunction: "+errInFunction+", requestBody: "+reqBody+", errorMsg:"
-    logger.error(logMsg, reqBody, error)
+    try{
+        if(typeof reqBody == "object") reqBody = JSON.stringify(reqBody)
+        logMsg = "errorInFunction: "+errInFunction+", requestBody: "+reqBody+", errorMsg:"
+        logger.error(logMsg, reqBody, error)
+    }catch(e){
+        console.log("In logger!")
+    }
 }
 
 module.exports = {
