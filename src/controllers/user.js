@@ -566,6 +566,7 @@ exports.alarmTrigger = async (req, res) => {
             location = req.body.location
         }
 
+        if(req.no_return == true){
         /**
          * if climate is in request(for tests)
          * check if it is sunny or cloudy by getting weather data from external weather API
@@ -645,6 +646,9 @@ exports.alarmTrigger = async (req, res) => {
                 return res.status(200).send({status: 200, body:{room_name,thermostat_temp, preferred_temp, location, alarm_time_weekday, alarm_time_weekend, name, username, light_on, curtain_on}, msg: weather_details.description})
             })
         })
+    }else{
+        return res.status(200).send({status: 200})
+    }
     }catch(e){
         logger.logExceptions(e, req.body, "alarmTrigger()")
         if(req.no_return == true){
