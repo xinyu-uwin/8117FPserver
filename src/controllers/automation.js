@@ -149,7 +149,7 @@ exports.automateAlarmTrigger = async () => {
                         if(hours.length < 2){
                             hours = "0"+hours
                         }
-                        if(minutes.length < 2){
+                        if(minutes_str.length < 2){
                             minutes_str = "0" + minutes_str
                         }
                         let hours_list = [(hours + ":" + minutes_str)]
